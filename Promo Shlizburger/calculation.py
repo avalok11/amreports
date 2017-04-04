@@ -12,14 +12,14 @@ conn_my = pymysql.connect(host=validation.ip_mysql, user=validation.usr_my, pass
                           db=validation.db_my, charset='utf8')
 cursor_my = conn_my.cursor()
 
-units = 403001
-ds = 20170327
+#units = 403001
+ds = 20170403
 df = (datetime.datetime.now() - datetime.timedelta(days=1)).date().strftime("%Y%m%d")
-df = 20170327
+#df = 20170327
 
 ds_march = 20170301
 df_march = 20170331
-products = ("1021385", "1021397")
+products = ("1023097", "1023108")
 # 1023097 1023108
 
 # подготовка справочников
