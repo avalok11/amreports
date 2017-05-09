@@ -176,7 +176,7 @@ def main():
     today = (datetime.datetime.now() - datetime.timedelta(days=1))
     print "Day - ", today.date()
     # определение даты дня дели прошлого года (проверка а высокосый год)
-    if today.year%4 == 0 or (today.year-1) == 0:
+    if today.year % 4 == 0 or (today.year-1) == 0:
         day_ly = (today - datetime.timedelta(days=365))
     else:
         day_ly = (today - datetime.timedelta(days=364))
@@ -194,8 +194,9 @@ def main():
     # транзакции всего, дайн ин транзакции, дайн ин прошлый год, делко транзакции, вынос транзакции
     days_data = list()
     for day in range_dates:
-        # print day[0], day[1]
-        # print "Days", day
+        print day[0], day[1]
+        print "Days", day
+        print type(day[0]), type(day[1])
         row = get_data_trans(day[0], day[1], cursor_ms)
         days_data.append(row)
 
