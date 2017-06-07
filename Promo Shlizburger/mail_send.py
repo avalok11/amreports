@@ -48,7 +48,7 @@ def main(file_path, report_name):
     rcpts.append('Irina.Fedotova@amrest.eu')
 
 #    rcpts = ['aleksey.yarkov@amrest.eu', 'Iliya.Ambrazhevich@amrest.eu', 'Andrey.Tihonov@amrest.eu', 'leonid.koptyaev@amrest.eu', 'Otar.Ananov@amrest.eu']
-#    rcpts = ['aleksey.yarkov@amrest.eu']
+    rcpts = ['aleksey.yarkov@amrest.eu']
 
     # sending email notification
     # me == email from
@@ -68,7 +68,7 @@ def main(file_path, report_name):
     part = MIMEBase('application', "octet-stream")
     part.set_payload(open(file_path, "rb").read())
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', 'attachment; filename="COLmichecker.xls"')
+    part.add_header('Content-Disposition', 'attachment; filename="PROMO CHEF.xls"')
 
     # Attach parts into message container.
     # According to RFC 2046, the last part of a multipart message, in this case

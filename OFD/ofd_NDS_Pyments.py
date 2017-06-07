@@ -68,7 +68,7 @@ def list_fn(cooks, regid, inn='7825335145', status=2):
 
 def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
     response = requests.get('https://api.sbis.ru/ofd/v1/orgs/'+str(inn)+'/kkts/'+str(regid)+'/storages/'
-                            + str(storageid)+'/docs?dateFrom='+str(datefrom)+'&limit=100', cookies=cooks)
+                            + str(storageid)+'/docs?dateFrom='+str(datefrom)+'&limit=1000', cookies=cooks)
     return response
 
 
@@ -77,7 +77,6 @@ def search_nds0(doc):
     j = 0
     for d in doc:
         nds0 = None
-        ndsNo = None
         ndsCalculated10 = None
         ndsCalculated18 = None
         fiscalDriveNumber = None
@@ -91,8 +90,6 @@ def search_nds0(doc):
             #print d
             if 'nds0' in d['receipt']:
                 nds0 = d['receipt']['nds0']
-            if 'ndsNo' in d['receipt']:
-                ndsNo = d['receipt']['ndsNo']
             if 'ndsCalculated10' in d['receipt']:
                 ndsCalculated10 = d['receipt']['ndsCalculated10']
             if 'ndsCalculated18' in d['receipt']:
@@ -105,10 +102,10 @@ def search_nds0(doc):
                 shiftNumber = d['receipt']['shiftNumber']
             if 'fiscalDriveNumber' in d['receipt']:
                 fiscalDriveNumber = d['receipt']['fiscalDriveNumber']
-        if (nds0 is not None) or (ndsNo is not None):
-            detail = pd.Series([fiscalDriveNumber, fiscalDocumentNumber, shiftNumber, dateTime, nds0, ndsNo,
+        if nds0 is not None:
+            detail = pd.Series([fiscalDriveNumber, fiscalDocumentNumber, shiftNumber, dateTime, nds0,
                                 ndsCalculated10, ndsCalculated18], index=['fiscalDriveNumber', 'fiscalDocumentNumber',
-                                                                            'shiftNumber', 'dateTime', 'nds0', 'ndsNo',
+                                                                            'shiftNumber', 'dateTime', 'ndsNo',
                                                                             'ndsCalculated10', 'ndsCalculated18'])
             check = check.append(detail, ignore_index=True)
     return check
@@ -132,8 +129,8 @@ def main():
 
     kkt_list = pd.DataFrame(kkts)
     kkt_list.set_index('regId', inplace=True)
-    kkt_list.drop('status', axis=1, inplace=True)
-    kkt_list.to_csv('df.csv', sep=';', encoding='utf-8')
+    #kkt_list.drop('status', axis=1, inplace=True)
+    kkt_list.to_csv('recipts_fp.csv', sep=';', encoding='utf-8')
 
     # ====================
     # ДЛЯ ТЕСТА ОГРАНИЧИВАЕМ КОЛ-ВО ПРИНТЕРОВ
@@ -151,67 +148,37 @@ def main():
         dat['regId'] = regId
         fn_list = pd.concat([fn_list, dat])
         print dat
-    fn_list.to_csv('fn_list.csv', sep=';', encoding='utf-8')
+    fn_list.to_csv('recipts_fn.csv', sep=';', encoding='utf-8')
 
     # ====================
-    # ОБЬЕДИНЕНИЕ ФН И ПРИНТЕРОВ В ОДИН СПИСОК
+    # Соединение данных списка ФН И ПРИНТЕРОВ В ОДИН СПИСОК
     # ====================
     kkt_list.reset_index(inplace=True)
     full_data = pd.merge(kkt_list, fn_list, how='inner', on='regId')
-    full_data.to_csv('full_list.csv', sep=';', encoding='utf-8')
+    full_data.to_csv('recipts_fn_fp.csv', sep=';', encoding='utf-8')
 
     # ====================
-    # Список всех фискальных документов по всем фискальным накопителям в организации
+    # Список всех фискальных документов по всем фискальным накопителям и по всем принтерам в организации
     # ====================
     all_docs = pd.DataFrame()
     print "список фискальных документов"
-
-    ##########
-    # Чтение данных по всем  ресторанам и всем принтерам
-    ##########
 
     for i in range(len(full_data)):
         print "Порядковый номер принтера: ", i
         regid = full_data.iloc[i]['regId']
         storageid = full_data.iloc[i]['storageId']
         print regid, storageid
-        r = list_checks(cooks, regid, storageid, '2017-05-14T00:00:00')
-        r = r.json()
-        #print r
-        #for rr in r:
-        #    print "\n===================== Чек ================="
-        #    print rr
-        #    for rrr in rr:
-        #        for a in rr[rrr]:
-        #            print a, rr[rrr][a]
-        #            if a == 'items':
-        #                for l in rr[rrr][a]:
-        #                    for ll in l:
-        #                        print " ", ll, ": ", l[ll]
-        #            elif a == 'properties':
-        #                for l in rr[rrr][a]:
-        #                    for ll in l:
-        #                        print " ", ll, ": ", l[ll]
-        doc = search_nds0(r)
-        all_docs = pd.concat([all_docs, doc])
+        #regid = '0000182040024937'
+        #storageid = '8710000100086130'
+        r = list_checks(cooks, regid, storageid, '2017-05-18T00:00:00')
+        r = pd.DataFrame(r.json())
+        print r
+        all_docs = pd.concat([all_docs, r])
 
-    #####################
-    # для теста одной кассы
-    #####################
-    #regid = '0000361999035361'
-    #storageid = '8710000100436051'
-    #r = list_checks(cooks, regid, storageid, '2017-05-18T00:00:00')
-    #r = r.json()
-    #print "checks"
-    #print r
-    #doc = search_nds0(r)
-    #all_docs = pd.concat([all_docs, doc])
-    ########################
+    all_docs.to_csv('recipts_list.csv', sep=';', encoding='utf-8')
 
-    all_docs.to_csv('list_ndsNo.csv', sep=';', encoding='utf-8')
-
-    full_data_with_checks = pd.merge(full_data, all_docs, how='inner', left_on='storageId', right_on='fiscalDriveNumber')
-    full_data_with_checks.to_csv('list_ndsNo_addr.csv', sep=';', encoding='utf-8')
+    #full_data_with_checks = pd.merge(full_data, all_docs, how='inner', left_on='storageId', right_on='fiscalDriveNumber')
+    #full_data_with_checks.to_csv('list_ndsNo_addr.csv', sep=';', encoding='utf-8')
 
     connection.close()
 

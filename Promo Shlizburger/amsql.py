@@ -220,7 +220,7 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.ru_menu m'
             '     ON m.id=sm.id'
             'WHERE datas between %s and %s AND ptype!=9 AND sm.unit=%s AND m.stv_id in %s '
-            'GROUP BY unit, datas;', (ds, df, unit, prod))
+            'GROUP BY unit;', (ds, df, unit, prod))
         return cursor_my.fetchall()
     elif region is 'All':
         cursor_my.execute(
@@ -233,7 +233,7 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.regions r '
             '     ON r.id_reg=un.unt_id_reg '
             'WHERE datas between %s and %s AND ptype!=9 AND m.stv_id in %s '
-            'GROUP BY r.reg_name, datas;', (ds, df, prod))
+            'GROUP BY r.reg_name;', (ds, df, prod))
         return cursor_my.fetchall()
     elif region is not None:
         cursor_my.execute(
@@ -246,7 +246,7 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.regions r '
             '     ON r.id_reg=un.unt_id_reg '
             'WHERE datas between %s and %s AND ptype!=9 AND r.reg_name=%s AND m.stv_id in %s '
-            'GROUP BY r.reg_name, datas;', (ds, df, region, prod))
+            'GROUP BY r.reg_name;', (ds, df, region, prod))
         return cursor_my.fetchall()
     elif district is 'All':
         cursor_my.execute(
@@ -259,7 +259,7 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.districts d'
             '     ON d.dis_id=un.id_d '
             'WHERE datas between %s and %s AND ptype!=9 AND m.stv_id in %s '
-            'GROUP BY d.dis_name, datas;', (ds, df, prod))
+            'GROUP BY d.dis_name;', (ds, df, prod))
         return cursor_my.fetchall()
     elif district is not None:
         cursor_my.execute(
@@ -272,7 +272,7 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.districts d'
             '     ON d.dis_id=un.id_d '
             'WHERE datas between %s and %s AND ptype!=9 AND d.dis_name=%s AND m.stv_id in %s '
-            'GROUP BY d.dis_name, datas;', (ds, df, district, prod))
+            'GROUP BY d.dis_name;', (ds, df, district, prod))
         return cursor_my.fetchall()
     elif brand is not None:
         cursor_my.execute(
@@ -294,6 +294,6 @@ def qty(cursor_my, ds, df, prod, unit=None, region=None, district=None, brand=No
             '   INNER JOIN ru_aop.ru_menu m '
             '     ON m.id=sm.id '
             'WHERE datas between %s and %s AND ptype!=9 AND m.stv_id in %s '
-            'GROUP BY unit, datas;', (ds, df, prod))
+            'GROUP BY unit;', (ds, df, prod))
         return cursor_my.fetchall()
 

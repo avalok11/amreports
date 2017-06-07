@@ -67,12 +67,12 @@ def promo_index_avg():
     # ====================
     for r in cl.brands:
         print_index(r, sheet1, string, indent, style_region,
-                    str(round(cl.brand_qty_day[r[0]] / cl.brand_tran_day[r[0]], 2) * 100),
-                    str(round(cl.brand_qty_ptd[r[0]] / cl.brand_tran_ptd[r[0]], 2) * 100),
-                    str(round((cl.brand_sales_day[r[0]] / cl.brand_tran_day[r[0]])
-                              / cl.avg_brand_march[r[0]], 2) * 100),
-                    str(round((cl.brand_sales_ptd[r[0]] / cl.brand_tran_ptd[r[0]])
-                              / cl.avg_brand_march[r[0]], 2) * 100),
+                    str(round((cl.brand_qty_day[r[0]] / cl.brand_tran_day[r[0]])*100, 2)),
+                    str(round((cl.brand_qty_ptd[r[0]] / cl.brand_tran_ptd[r[0]])*100, 2)),
+                    str(round(((cl.brand_sales_day[r[0]] / cl.brand_tran_day[r[0]])
+                              / cl.avg_brand_march[r[0]])*100, 2)),
+                    str(round(((cl.brand_sales_ptd[r[0]] / cl.brand_tran_ptd[r[0]])
+                              / cl.avg_brand_march[r[0]])*100, 2)),
                     row_day_1, row_ptd_1, row_day_2, row_ptd_2)
         string += 1
 
@@ -84,12 +84,12 @@ def promo_index_avg():
     # print amsql.sales(cursor_my, ds, df, district='KFC RU 2')
     for r in cl.districts:
         print_index(r, sheet1, string, indent, style_region,
-                    str(round(cl.districts_qty_day[r[0]] / cl.districts_tran_day[r[0]], 2) * 100),
-                    str(round(cl.districts_qty_ptd[r[0]] / cl.districts_tran_ptd[r[0]], 2) * 100),
-                    str(round((cl.districts_sales_day[r[0]] / cl.districts_tran_day[r[0]])
-                              / cl.avg_districts_march[r[0]], 2) * 100),
-                    str(round((cl.districts_sales_ptd[r[0]] / cl.districts_tran_ptd[r[0]])
-                              / cl.avg_districts_march[r[0]], 2) * 100),
+                    str(round((cl.districts_qty_day[r[0]] / cl.districts_tran_day[r[0]])*100, 2)),
+                    str(round((cl.districts_qty_ptd[r[0]] / cl.districts_tran_ptd[r[0]])*100, 2)),
+                    str(round(((cl.districts_sales_day[r[0]] / cl.districts_tran_day[r[0]])
+                              / cl.avg_districts_march[r[0]])*100, 2)),
+                    str(round(((cl.districts_sales_ptd[r[0]] / cl.districts_tran_ptd[r[0]])
+                              / cl.avg_districts_march[r[0]])*100, 2)),
                     row_day_1, row_ptd_1, row_day_2, row_ptd_2)
         string += 1
     string += 1
@@ -99,14 +99,14 @@ def promo_index_avg():
     # ====================
     # print amsql.qty(cursor_my, ds, df, products, region='KFC RU MOSCOW 2')
     for r in cl.regions:
-        print r
+        #print r
         print_index(r, sheet1, string, indent, style_region,
-                    str(round(cl.regions_qty_day[r[0]] / cl.regions_tran_day[r[0]], 2)*100),
-                    str(round(cl.regions_qty_ptd[r[0]] / cl.regions_tran_ptd[r[0]], 2) * 100),
-                    str(round((cl.regions_sales_day[r[0]] / cl.regions_tran_day[r[0]])
-                              / cl.avg_regions_march[r[0]], 2) * 100),
-                    str(round((cl.regions_sales_ptd[r[0]] / cl.regions_tran_ptd[r[0]])
-                              / cl.avg_regions_march[r[0]], 2) * 100),
+                    str(round((cl.regions_qty_day[r[0]] / cl.regions_tran_day[r[0]])*100, 2)),
+                    str(round((cl.regions_qty_ptd[r[0]] / cl.regions_tran_ptd[r[0]])*100, 2)),
+                    str(round(((cl.regions_sales_day[r[0]] / cl.regions_tran_day[r[0]])
+                              / cl.avg_regions_march[r[0]])*100, 2)),
+                    str(round(((cl.regions_sales_ptd[r[0]] / cl.regions_tran_ptd[r[0]])
+                              / cl.avg_regions_march[r[0]])*100, 2)),
                     row_day_1, row_ptd_1, row_day_2, row_ptd_2)
         string += 1
     string += 1
@@ -137,7 +137,7 @@ def promo_index_avg():
     string_m = 0
     string_s = 0
     for r in cl.sorted_units:
-        print r[2]
+        #print r[2]
         if r[2] == 'LARGE':
             sheet_l = sheet4
             print_index(r, sheet_l, string_l, indent, style_rest,
@@ -157,7 +157,7 @@ def promo_index_avg():
                         row_day_1, row_ptd_1, row_day_2, row_ptd_2)
             string_s += 1
 
-    book.save("Promo Shefburger.xls")
+    book.save("Promo Chefburger.xls")
 
 
 if __name__ == "__main__":
