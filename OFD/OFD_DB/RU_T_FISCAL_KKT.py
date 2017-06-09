@@ -68,8 +68,7 @@ def main():
     print kkts
 
     kkt_list = pd.DataFrame(kkts)
-    #kkt_list.set_index('regId', inplace=True)
-    #kkt_list.drop('status', axis=1, inplace=True)
+    kkt_list = kkt_list[['address','factoryId','model','regId','status']]
     kkt_list.to_csv('KKT.csv', sep=';', encoding='utf-8')
     #kkt_list = kkt_list.values.tolist()
     kkt_list = [((x[1],) + tuple(x)) for x in kkt_list.values.tolist()]

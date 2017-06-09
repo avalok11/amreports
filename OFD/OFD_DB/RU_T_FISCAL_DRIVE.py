@@ -90,6 +90,8 @@ def main():
         dat['regId'] = k[0]
         fn_list = pd.concat([fn_list, dat])
         print dat
+
+    fn_list = fn_list[['effectiveFrom', 'effectiveTo', 'model', 'regId', 'status', 'storageId']]
     fn_list.to_csv('FN.csv', sep=';', encoding='utf-8')
     connection.close()
     #print 'effectiveFrom'
