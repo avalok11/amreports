@@ -80,31 +80,46 @@ def main():
     # ====================
     fn_list = pd.DataFrame()
     regid = reg_kkt(cursor_ms)
+    #regid= (('0000612404012879',), ('0000612219058428',), ('0000612124004976',))
     for k in regid:
         dat = pd.DataFrame(list_fn(cooks, k[0], inn='7825335145', status=2))
         if 'effectiveTo' not in dat.columns.values:
-            dat['effectiveTo'] = '0'
+            dat['effectiveTo'] = None
+        if 'effectiveFrom' not in dat.columns.values:
+            dat['effectiveFrom'] = None
         dat['regId'] = k[0]
         fn_list = pd.concat([fn_list, dat])
         print dat
     fn_list.to_csv('FN.csv', sep=';', encoding='utf-8')
-
     connection.close()
-
+    #print 'effectiveFrom'
+    #print fn_list['effectiveFrom']
+    #fn_list['effectiveFrom'] = pd.to_datetime(fn_list['effectiveFrom'])
+    #print 'effectiveTo'
+    #print fn_list['effectiveTo']
+    #fn_list['effectiveTo'] = pd.to_datetime(fn_list['effectiveTo'])
+    #print '123123123132'
+    drive_list = [((x[3], x[5],) + tuple(x)) for x in fn_list.values.tolist()]
+    print "\nDRIVE LIST"
+    print drive_list
 
     # ===========================
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
     # ===========================
-    #cursor_ms.executemany("BEGIN "
-    #                      "  IF NOT EXISTS "
-    #                      "    (SELECT 1 FROM RU_T_FISCAL_KKT WHERE factoryId=%s)"
-    #                      "  BEGIN "
-    #                      "    INSERT INTO RU_T_FISCAL_KKT (address,factoryId,model,regId,status) "
-    #                      "    VALUES (%s, %s, %s, %s, %s)"
-    #                      "  END "
-    #                      "END", kkt_list)
+    # УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
+    cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_DRIVE;')
 
-    #conn_ms.commit()
+    cursor_ms.executemany("BEGIN "
+                          "  IF NOT EXISTS "
+                          "    (SELECT 1 FROM RU_T_FISCAL_DRIVE WHERE regId=%s and storageId=%s)"
+                          "  BEGIN "
+                          "    INSERT INTO RU_T_FISCAL_DRIVE "
+                          "     (effectiveFrom, effectiveTo, model, regId, status, storageId) "
+                          "    VALUES (%s, %s, %s, %s, %s, %s)"
+                          "  END "
+                          "END", drive_list)
+
+    conn_ms.commit()
     conn_ms.close()
 
 if __name__ == "__main__":

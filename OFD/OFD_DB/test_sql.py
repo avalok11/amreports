@@ -8,8 +8,8 @@ import datetime
 import pymssql
 import validation as vl
 
-a = [('0001580632035623', '8710000100537947', '2017-05-31T14:33:00', 0, u'ФН-1',
-      '0001580632035623', 2, '8710000100537947')]
+a = [(u'8710000100612901', '0000612404012879', '2017-06-05T15:09:00', u'\u0424\u041d-1', u'4', u'8710000100612901', None, '0000612404012879'),
+     (u'8710000100609863', '0000612219058428', '2017-06-05T15:09:00', u'\u0424\u041d-1', u'4', u'8710000100609863', None, '0000612219058428')]
 
 # ===========================
 # ПОДКЛЮЧНИЕ БАЗЫ PL И ЗАГРУЗКА ПОЛУЧЕННОЙ ИНФОРМАЦИИ ИЗ ОФД В ДБ
@@ -22,12 +22,14 @@ cursor_ms = conn_ms.cursor()
 # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
 # ===========================
 print a
-УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
+#УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
+cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_DRIVE;')
+
 cursor_ms.executemany("BEGIN "
                       "  IF NOT EXISTS "
                       "    (SELECT 1 FROM RU_T_FISCAL_DRIVE WHERE regId=%s and storageId=%s)"
                       "  BEGIN "
-                      "    INSERT INTO RU_T_FISCAL_DRIVE (effectiveFrom, effectiveTo, model, regId, status, storageId) "
+                      "    INSERT INTO RU_T_FISCAL_DRIVE (effectiveFrom, model, status, storageId, effectiveTo, regId) "
                       "    VALUES (%s, %s, %s, %s, %s, %s)"
                       "  END "
                       "END", a)

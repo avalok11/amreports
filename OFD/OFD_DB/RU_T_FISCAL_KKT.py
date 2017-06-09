@@ -89,6 +89,8 @@ def main():
     # ===========================
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
     # ===========================
+    # УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
+    cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_KKT;')
     cursor_ms.executemany("BEGIN "
                           "  IF NOT EXISTS "
                           "    (SELECT 1 FROM RU_T_FISCAL_KKT WHERE factoryId=%s)"
