@@ -64,7 +64,7 @@ def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
     """
 
     response = requests.get('https://api.sbis.ru/ofd/v1/orgs/'+str(inn)+'/kkts/'+str(regid)+'/storages/'
-                            + str(storageid)+'/docs?dateFrom='+str(datefrom)+'&limit=10', cookies=cooks)
+                            + str(storageid)+'/docs?dateFrom='+str(datefrom)+'&limit=100', cookies=cooks)
     return response.json()
 
 
@@ -121,11 +121,9 @@ def main():
         for i in close_shift_tmp:
             close_shift = pd.concat([close_shift, pd.DataFrame(i, index=[0])])
         for i in receipt_tmp:
-            print "\n\n\n", i
-            print pd.DataFrame(i)
+            #print "\n\n\n", i
+            #print pd.DataFrame(i)
             receipt = pd.concat([receipt, pd.DataFrame(i)])
-
-
 
 
 
@@ -134,16 +132,7 @@ def main():
     close_shift.to_csv('closeshift.csv', sep=';', encoding='utf-8')
     receipt.to_csv('receipt.csv', sep=';', encoding='utf-8')
     connection.close()
-    #print 'effectiveFrom'
-    #print fn_list['effectiveFrom']
-    #fn_list['effectiveFrom'] = pd.to_datetime(fn_list['effectiveFrom'])
-    #print 'effectiveTo'
-    #print fn_list['effectiveTo']
-    #fn_list['effectiveTo'] = pd.to_datetime(fn_list['effectiveTo'])
-    #print '123123123132'
-    #drive_list = [((x[3], x[5],) + tuple(x)) for x in fn_list.values.tolist()]
-    #print "\nDRIVE LIST"
-    #print drive_list
+
 
     # ===========================
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
