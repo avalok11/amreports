@@ -72,27 +72,6 @@ def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
 #    cursor_ms.execute("SELECT regId FROM RU_T_FISCAL_KKT;")
 #    return cursor_ms.fetchall()
 
-def nds_check(df):
-    if 'ndsNo' in df.columns.values:
-        df['nds0'] = df['ndsNo']
-        df.drop('ndsNo', axis=1, inplace=True)
-    if 'ndsCalculated10' in df.columns.values:
-        df['nds10'] = df['ndsCalculated10']
-        df.drop('ndsCalculated10', axis=1, inplace=True)
-    if 'ndsCalculated18' in df.columns.values:
-        df['nds18'] = df['ndsCalculated18']
-        df.drop('ndsCalculated18', axis=1, inplace=True)
-    if 'ndsCalculated0' in df.columns.values:
-        df['nds0'] = df['ndsCalculated0']
-        df.drop('ndsCalculated0', axis=1, inplace=True)
-    if 'nds0' not in df.columns.values:
-        df['nds0'] = 0
-    if 'nds10' not in df.columns.values:
-        df['nds10'] = 0
-    if 'nds18' not in df.columns.values:
-        df['nds18'] = 0
-    return df
-
 
 def reg_drive(cursor_ms):
     cursor_ms.execute("SELECT regId, storageId FROM RU_T_FISCAL_DRIVE WHERE status=2;")
@@ -190,57 +169,61 @@ def main():
             for i in receipt_tmp:
                 print "Data from OFD: ", i
                 try:
-                    items_tmp = i['items']
+                    items_tmp = i['items'].dropna()
                     for y in items_tmp:
                         df = pd.DataFrame(y, index=[0])
-                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                        df['kktRegId'] = i['kktRegId']
-                        df['shiftNumber'] = i['shiftNumber']
-                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                        df = nds_check(df)
-                        items = pd.concat([items, df])
-                    del(i['items'])
-                except KeyError:
-                    None
-                try:
-                    properties_tmp = i['properties']
-                    for y in properties_tmp:
-                        df = pd.DataFrame(y, index=[0])
-                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                        df['kktRegId'] = i['kktRegId']
-                        df['shiftNumber'] = i['shiftNumber']
-                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                        properties = pd.concat([properties, df])
+
+                    print "Properties: ", i['properties']
                     del(i['properties'])
                 except KeyError:
                     None
                 try:
-                    modifiers_tmp = i['modifiers']
-                    for y in modifiers_tmp:
-                        df = pd.DataFrame(y, index=[0])
-                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                        df['kktRegId'] = i['kktRegId']
-                        df['shiftNumber'] = i['shiftNumber']
-                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                        modifiers = pd.concat([modifiers, df])
                     del(i['modifiers'])
                 except KeyError:
                     None
-                df = pd.DataFrame(i, index=[0])
+                try:
+                    print i['items']
+                    print "aaa"
+                except KeyError:
+                    None
+                df = pd.DataFrame(i)
                 df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #items_tmp = df['items']
-                #df.drop('items', axis=1, inplace=True)
-                #ind = 0
-                #dy = pd.DataFrame()
-                #for y in items_tmp:
-                #    dy = pd.concat([dy, pd.DataFrame(y, index=[ind])])
-                #    ind += 1
-                #df = df.merge(dy, left_index=True, right_index=True, how='inner')
-                #df.fillna(value=0, inplace=True)
-                df = nds_check(df)
-                df.drop('rawData', axis=1, inplace=True)
+                items_tmp = df['items']
+                df.drop('items', axis=1, inplace=True)
+                ind = 0
+                dy = pd.DataFrame()
+                for y in items_tmp:
+                    dy = pd.concat([dy, pd.DataFrame(y, index=[ind])])
+                    ind += 1
+                df = df.merge(dy, left_index=True, right_index=True, how='inner')
+                df.fillna(value=0, inplace=True)
+                if 'ndsNo_x' in df.columns.values:
+                    df['nds0_x'] = df['ndsNo_x']
+                    df['nds0_y'] = df['ndsNo_y']
+                    df.drop('ndsNo_x', axis=1, inplace=True)
+                    df.drop('ndsNo_y', axis=1, inplace=True)
+                if 'ndsCalculated10_x' in df.columns.values:
+                    df['nds10_x'] = df['ndsCalculated10_x']
+                    df['nds10_y'] = df['ndsCalculated10_y']
+                if 'ndsCalculated18_x' in df.columns.values:
+                    df['nds18_x'] = df['ndsCalculated18_x']
+                    df['nds18_y'] = df['ndsCalculated18_y']
+                if 'ndsCalculated0_x' in df.columns.values:
+                    df['nds0_x'] = df['ndsCalculated0_x']
+                    df['nds0_y'] = df['ndsCalculated0_y']
+                if 'nds0_x' not in df.columns.values:
+                    df['nds0_x'] = 0
+                if 'nds0_y' not in df.columns.values:
+                    df['nds0_y'] = 0
+                if 'nds10_x' not in df.columns.values:
+                    df['nds10_x'] = 0
+                if 'nds10_y' not in df.columns.values:
+                    df['nds10_y'] = 0
+                if 'nds18_x' not in df.columns.values:
+                    df['nds18_x'] = 0
+                if 'nds18_y' not in df.columns.values:
+                    df['nds18_y'] = 0
                 receipt = pd.concat([receipt, df])
-                print "Receipt!"
         except KeyError:
             None
     connection.close()
@@ -274,75 +257,35 @@ def main():
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О ЧЕКАХ
     # ===========================
+    receipt['numid'] = receipt.index
     try:
         receipt = receipt[['cashTotalSum', 'dateTime', 'ecashTotalSum', 'fiscalDocumentNumber',
-                           'fiscalDriveNumber', 'fiscalSign', 'kktRegId', 'nds0', 'nds10', 'nds18',
+                           'fiscalDriveNumber', 'fiscalSign', 'kktRegId', 'nds0_x', 'nds10_x', 'nds18_x',  #'fiscalDriveNumber', 'fiscalSign', 'items', 'kktRegId', 'nds0', 'nds10', 'nds18',
+                           'nds0_y', 'nds10_y', 'nds18_y',
                            'operationType', 'operator', 'receiptCode', 'requestNumber',
-                           'shiftNumber', 'user', 'userInn']]
-        receipt['nds0'] /= 100
-        receipt['nds10'] /= 100
-        receipt['nds18'] /= 100
+                           'shiftNumber', 'price', 'user', 'userInn', 'numid', 'name', 'quantity']]
+        receipt['nds0_x'] /= 100
+        receipt['nds10_x'] /= 100
+        receipt['nds18_x'] /= 100
+        receipt['nds0_y'] /= 100
+        receipt['nds10_y'] /= 100
+        receipt['nds18_y'] /= 100
         receipt['cashTotalSum'] /= 100
         receipt['ecashTotalSum'] /= 100
-        receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        receipt = [((x[1], x[4], x[6], x[14]) + tuple(x)) for x in receipt.values.tolist()]
-        print "RECEIPT"
-        print receipt
+        receipt['price'] /= 100
     except KeyError:
         None
-
-
-    # ===========================
-    # ПОДГОТОВКА ДАННЫХ О ПРОДУКТАХ В ЧЕКАХ
-    # ===========================
-    try:
-        items = items[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber'
-                       'nds0', 'nds10', 'nds18',
-                       'name', 'price', 'quantity', 'sum']]
-        items['nds0'] /= 100
-        items['nds10'] /= 100
-        items['nds18'] /= 100
-        items['sum'] /= 100
-        items['price'] /= 100
-        items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        items = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in items.values.tolist()]
-        print "RECEIPT"
-        print items
-    except KeyError:
-        None
-
-    # ===========================
-    # ПОДГОТОВКА ДАННЫХ О СВОЙСТВАХ ЧЕКА
-    # ===========================
-    try:
-        properties = properties[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber',
-                                 'key', 'value']]
-        properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        properties = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in properties.values.tolist()]
-        print "RECEIPT"
-        print properties
-    except KeyError:
-        None
-
-    # ===========================
-    # ПОДГОТОВКА ДАННЫХ О МОДИФИКАТОРАХ ЧЕКА
-    # ===========================
-    try:
-        modifiers = modifiers[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber',
-                               'key', 'value']]
-        modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        modifiers = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in modifiers.values.tolist()]
-        print "RECEIPT"
-        print modifiers
-    except KeyError:
-        None
+    receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
+    receipt = [((x[1], x[4], x[7], x[15], x[19]) + tuple(x)) for x in receipt.values.tolist()]  #receipt = [((x[1], x[4], x[7], x[15]) + tuple(x)) for x in receipt.values.tolist()]
+    print "RECEIPT"
+    print receipt
 
     # ===========================
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
     # ===========================
 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
-    if test is False:
+    if test is Fales:
         cursor_ms.executemany("BEGIN "
                               "  IF NOT EXISTS "
                               "    (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s "
@@ -382,10 +325,11 @@ def main():
                               "    INSERT INTO RU_T_FISCAL_RECEIPT "
                               "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
                               "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
+                              "             nds0_item, nds10_item, nds18_item,"
                               "             operationType, operator, receiptCode, requestNumber,"
                               "             shiftNumber, price, usr, userInn, numid, name, quantity)  "
                               "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                              "             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                              "             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
                               "  END "
                               "END", receipt)
 
