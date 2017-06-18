@@ -63,12 +63,12 @@ def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
             1084	properties	дополнительный реквизит	Array[объект]	0..n
     """
 
-    response = requests.get('https://api.sbis.ru/ofd/v1/orgs/'+str(inn)+'/kkts/'+str(regid)+'/storages/'
-                            + str(storageid)+'/docs?dateFrom='+str(datefrom)+'&limit=10', cookies=cooks)
+    response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
+                            + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000', cookies=cooks)
     return response.json()
 
 
-#def reg_kkt(cursor_ms):
+# def reg_kkt(cursor_ms):
 #    cursor_ms.execute("SELECT regId FROM RU_T_FISCAL_KKT;")
 #    return cursor_ms.fetchall()
 
@@ -99,18 +99,19 @@ def reg_drive(cursor_ms):
     return cursor_ms.fetchall()
 
 
-def main():
-    test = True
+def main(hour_frame=38):
+    test = False
     # ====================
     # АТОРИЗАЦИЯ
     # ====================
     connection, cooks = connect()
-    print "Connection is established"
-    print " _________________________"
+    print "\nConnection is established"
+    print "_________________________"
     print (connection.status_code)
     print (connection.url)
     print (cooks)
-    print " _________________________"
+    print "_________________________"
+    print "=========================\n"
 
     # ===========================
     # ПОДКЛЮЧНИЕ БАЗЫ PL
@@ -126,20 +127,21 @@ def main():
     # ====================
     id = (('0000612404012879', '8710000100612901'), ('0000612219058428', '8710000100609863'),
           ('0000612124004976', '8710000100604073'))
-    #id = (('0000574146027868', '8710000100779501'),
+    # id = (('0000574146027868', '8710000100779501'),
     #      ('0000574048062921', '8710000100779443'),
     #      ('0000573980017345', '8710000100779164'))
-    #id = (('0000509048051340', '8710000100373867'), )
+
     if test is False:
         id = reg_drive(cursor_ms)
-    id = (('0000498683024399', '8710000100675581'),)
+    # id = (('0000544620064870', '8710000100512111'),)
+    #id = (('0000509048051340', '8710000100373867'),)
     print id
 
     # ======================
     # предварительное определение полей значений
     # ======================
     open_shift = pd.DataFrame(columns=['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
-                                        'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn'])
+                                       'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn'])
     close_shift = pd.DataFrame(columns=['code', 'dateTime', 'documentsQuantity', 'fiscalDocumentNumber',
                                         'fiscalDriveExhaustionSign', 'fiscalDriveMemoryExceededSign',
                                         'fiscalDriveNumber', 'fiscalDriveReplaceRequiredSign', 'fiscalSign', 'kktRegId',
@@ -158,11 +160,12 @@ def main():
     modifiers = pd.DataFrame()
 
     today = datetime.datetime.today()
-    day_check = today - datetime.timedelta(days=1)
-    datas = day_check.date().isoformat()+"T00:00:00"
+    day_check = today - datetime.timedelta(hours=hour_frame)
+    datas = day_check.isoformat()
+
+    print "Data to check: ", datas
     day = day_check.date().isoformat()
 
-    #datas = '2017-06-07T00:00:00'
 
     for k in id:
         print k[0], k[1]
@@ -180,8 +183,9 @@ def main():
             for i in close_shift_tmp:
                 df = pd.DataFrame(i, index=[0])
                 df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
-                df['notTransmittedDocumentsDateTime'] = datetime.datetime.fromtimestamp(df['notTransmittedDocumentsDateTime'])
-                #df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
+                df['notTransmittedDocumentsDateTime'] = datetime.datetime.fromtimestamp(
+                    df['notTransmittedDocumentsDateTime'])
+                # df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
                 close_shift = pd.concat([close_shift, df])
         except KeyError:
             None
@@ -191,56 +195,62 @@ def main():
                 print "Data from OFD: ", i
                 try:
                     items_tmp = i['items']
+                    indeks = 0
                     for y in items_tmp:
-                        df = pd.DataFrame(y, index=[0])
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
                         df['fiscalDriveNumber'] = i['fiscalDriveNumber']
                         df['kktRegId'] = i['kktRegId']
                         df['shiftNumber'] = i['shiftNumber']
                         df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
                         df = nds_check(df)
                         items = pd.concat([items, df])
-                    del(i['items'])
+                        None
+                    del (i['items'])
                 except KeyError:
                     None
                 try:
                     properties_tmp = i['properties']
+                    indeks = 0
                     for y in properties_tmp:
-                        df = pd.DataFrame(y, index=[0])
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
                         df['fiscalDriveNumber'] = i['fiscalDriveNumber']
                         df['kktRegId'] = i['kktRegId']
                         df['shiftNumber'] = i['shiftNumber']
                         df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
                         properties = pd.concat([properties, df])
-                    del(i['properties'])
+                    del (i['properties'])
                 except KeyError:
                     None
                 try:
                     modifiers_tmp = i['modifiers']
+                    indeks = 0
                     for y in modifiers_tmp:
-                        df = pd.DataFrame(y, index=[0])
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
                         df['fiscalDriveNumber'] = i['fiscalDriveNumber']
                         df['kktRegId'] = i['kktRegId']
                         df['shiftNumber'] = i['shiftNumber']
                         df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
                         modifiers = pd.concat([modifiers, df])
-                    del(i['modifiers'])
+                    del (i['modifiers'])
                 except KeyError:
                     None
                 df = pd.DataFrame(i, index=[0])
                 df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #items_tmp = df['items']
-                #df.drop('items', axis=1, inplace=True)
-                #ind = 0
-                #dy = pd.DataFrame()
-                #for y in items_tmp:
+                # items_tmp = df['items']
+                # df.drop('items', axis=1, inplace=True)
+                # ind = 0
+                # dy = pd.DataFrame()
+                # for y in items_tmp:
                 #    dy = pd.concat([dy, pd.DataFrame(y, index=[ind])])
                 #    ind += 1
-                #df = df.merge(dy, left_index=True, right_index=True, how='inner')
-                #df.fillna(value=0, inplace=True)
+                # df = df.merge(dy, left_index=True, right_index=True, how='inner')
+                # df.fillna(value=0, inplace=True)
                 df = nds_check(df)
                 df.drop('rawData', axis=1, inplace=True)
                 receipt = pd.concat([receipt, df])
-                print "Receipt!"
         except KeyError:
             None
     connection.close()
@@ -248,32 +258,43 @@ def main():
     # ===========================
     # ПОДГОТОВКА ДАННЫХ ОБ ОТКРЫТИИ СМЕН
     # ===========================
-    open_shift = open_shift[['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
-                                       'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn']]
-    open_shift.drop('rawData', axis=1, inplace=True)
-    open_shift.to_csv('openshift_'+str(day)+'.csv', sep=';', encoding='utf-8')
-    open_shift = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
-    print "OPEN SHIFTS"
-    print open_shift
+    ind_oshift = False
+    try:
+        open_shift = open_shift[['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
+                                 'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn']]
+        open_shift.drop('rawData', axis=1, inplace=True)
+        open_shift.to_csv('openshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
+        open_shift = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
+        print "OPEN SHIFTS"
+        print open_shift
+        ind_oshift = True
+    except KeyError:
+        None
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О ЗАКРЫТИИ СМЕН
     # ===========================
-    close_shift = close_shift[['code', 'dateTime', 'documentsQuantity', 'fiscalDocumentNumber',
-                                        'fiscalDriveExhaustionSign', 'fiscalDriveMemoryExceededSign',
-                                        'fiscalDriveNumber', 'fiscalDriveReplaceRequiredSign', 'fiscalSign', 'kktRegId',
-                                        'notTransmittedDocumentsDateTime', 'notTransmittedDocumentsQuantity',
-                                        'ofdResponseTimeoutSign', 'operator', 'rawData', 'receiptsQuantity',
-                                        'shiftNumber', 'userInn']]
-    close_shift.drop('rawData', axis=1, inplace=True)
-    close_shift.to_csv('closeshift_'+str(day)+'.csv', sep=';', encoding='utf-8')
-    close_shift = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
-    print "CLOSED SHIFTS"
-    print close_shift
+    ind_cshift = False
+    try:
+        close_shift = close_shift[['code', 'dateTime', 'documentsQuantity', 'fiscalDocumentNumber',
+                                   'fiscalDriveExhaustionSign', 'fiscalDriveMemoryExceededSign',
+                                   'fiscalDriveNumber', 'fiscalDriveReplaceRequiredSign', 'fiscalSign', 'kktRegId',
+                                   'notTransmittedDocumentsDateTime', 'notTransmittedDocumentsQuantity',
+                                   'ofdResponseTimeoutSign', 'operator', 'rawData', 'receiptsQuantity',
+                                   'shiftNumber', 'userInn']]
+        close_shift.drop('rawData', axis=1, inplace=True)
+        close_shift.to_csv('closeshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
+        close_shift = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
+        print "CLOSED SHIFTS"
+        print close_shift
+        ind_cshift = True
+    except KeyError:
+        None
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О ЧЕКАХ
     # ===========================
+    ind_receipt = False
     try:
         receipt = receipt[['cashTotalSum', 'dateTime', 'ecashTotalSum', 'fiscalDocumentNumber',
                            'fiscalDriveNumber', 'fiscalSign', 'kktRegId', 'nds0', 'nds10', 'nds18',
@@ -285,18 +306,20 @@ def main():
         receipt['cashTotalSum'] /= 100
         receipt['ecashTotalSum'] /= 100
         receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        receipt = [((x[1], x[4], x[6], x[14]) + tuple(x)) for x in receipt.values.tolist()]
+        receipt = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
         print "RECEIPT"
         print receipt
+        ind_receipt = True
     except KeyError:
         None
-
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О ПРОДУКТАХ В ЧЕКАХ
     # ===========================
+    ind_item = False
     try:
-        items = items[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber'
+        items['numid'] = items.index.values
+        items = items[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                        'nds0', 'nds10', 'nds18',
                        'name', 'price', 'quantity', 'sum']]
         items['nds0'] /= 100
@@ -305,35 +328,42 @@ def main():
         items['sum'] /= 100
         items['price'] /= 100
         items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        items = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in items.values.tolist()]
+        items = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
         print "RECEIPT"
         print items
+        ind_item = True
     except KeyError:
         None
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О СВОЙСТВАХ ЧЕКА
     # ===========================
+    ind_property = False
     try:
-        properties = properties[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber',
+        properties['numid'] = properties.index.values
+        properties = properties[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                                  'key', 'value']]
         properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        properties = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in properties.values.tolist()]
-        print "RECEIPT"
+        properties = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in properties.values.tolist()]
+        print "PROPERIES"
         print properties
+        ind_property = True
     except KeyError:
         None
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ О МОДИФИКАТОРАХ ЧЕКА
     # ===========================
+    ind_modifier = False
     try:
-        modifiers = modifiers[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber',
-                               'key', 'value']]
+        modifiers['numid'] = modifiers.index.values
+        modifiers = modifiers[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
+                               'discountSum']]
         modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        modifiers = [((x[0], x[1], x[2], x[3]) + tuple(x)) for x in modifiers.values.tolist()]
-        print "RECEIPT"
+        modifiers = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in modifiers.values.tolist()]
+        print "MODIFIERS"
         print modifiers
+        ind_modifier = True
     except KeyError:
         None
 
@@ -343,60 +373,107 @@ def main():
 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
     if test is False:
-        cursor_ms.executemany("BEGIN "
-                              "  IF NOT EXISTS "
-                              "    (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s "
-                              "                                            and kktRegId=%s and shiftNumber=%s)"
-                              "  BEGIN "
-                              "    INSERT INTO RU_T_FISCAL_OSHIFT "
-                              "         (code, dateTime, fiscalDocumentNumber, fiscalDriveNumber, fiscalSign, kktRegId, "
-                              "          operator, shiftNumber, usrInn) "
-                              "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-                              "  END "
-                              "END", open_shift)
+        if ind_oshift:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s "
+                                  "                                            and kktRegId=%s and shiftNumber=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_OSHIFT "
+                                  "         (code, dateTime, fiscalDocumentNumber, fiscalDriveNumber, fiscalSign, "
+                                  "          kktRegId, operator, shiftNumber, usrInn) "
+                                  "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                                  "  END "
+                                  "END", open_shift)
 
         # ЗАКРЫТЫЕ СМЕНЫ
-        cursor_ms.executemany("BEGIN "
-                              "  IF NOT EXISTS "
-                              "    (SELECT 1 FROM RU_T_FISCAL_CSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
-                              "                                            and kktRegId=%s and shiftNumber=%s)"
-                              "  BEGIN "
-                              "    INSERT INTO RU_T_FISCAL_CSHIFT "
-                              "            (code, dateTime, documentsQuantity, fiscalDocumentNumber,"
-                              "             fiscalDriveExhaustionSign, fiscalDriveMemoryExceededSign,"
-                              "             fiscalDriveNumber, fiscalDriveReplaceRequiredSign, fiscalSign, kktRegId,"
-                              "             notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
-                              "             ofdResponseTimeoutSign, operator, receiptsQuantity,"
-                              "             shiftNumber, userInn)"
-                              "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                              "            %s, %s, %s, %s, %s, %s, %s)"
-                              "  END "
-                              "END", close_shift)
+        if ind_cshift:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_CSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
+                                  "                                            and kktRegId=%s and shiftNumber=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_CSHIFT "
+                                  "           (code, dateTime, documentsQuantity, fiscalDocumentNumber,"
+                                  "            fiscalDriveExhaustionSign, fiscalDriveMemoryExceededSign,"
+                                  "            fiscalDriveNumber, fiscalDriveReplaceRequiredSign, fiscalSign, kktRegId,"
+                                  "            notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
+                                  "            ofdResponseTimeoutSign, operator, receiptsQuantity,"
+                                  "            shiftNumber, userInn)"
+                                  "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                                  "            %s, %s, %s, %s, %s, %s, %s)"
+                                  "  END "
+                                  "END", close_shift)
 
         # ЧЕКИ
-        cursor_ms.executemany("BEGIN "
-                              "  IF NOT EXISTS "
-                              "    (SELECT 1 FROM RU_T_FISCAL_RECEIPT WHERE dateTime=%s and fiscalDriveNumber=%s"
-                              "                                            and kktRegId=%s and shiftNumber=%s and numid=%s)"
-                              "  BEGIN "
-                              "    INSERT INTO RU_T_FISCAL_RECEIPT "
-                              "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
-                              "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
-                              "             operationType, operator, receiptCode, requestNumber,"
-                              "             shiftNumber, price, usr, userInn, numid, name, quantity)  "
-                              "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                              "             %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"
-                              "  END "
-                              "END", receipt)
+        if ind_receipt:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_RECEIPT WHERE dateTime=%s and fiscalDriveNumber=%s"
+                                  "                                            and kktRegId=%s and shiftNumber=%s and "
+                                  "                                            fiscalDocumentNumber=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_RECEIPT "
+                                  "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
+                                  "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
+                                  "             operationType, operator, receiptCode, requestNumber,"
+                                  "             shiftNumber, usr, userInn)  "
+                                  "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                                  "             %s, %s, %s, %s, %s, %s, %s)"
+                                  "  END "
+                                  "END", receipt)
+        # СОСТАВ ЧЕКА
+        if ind_item:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=%s and "
+                                  "                                           fiscalDriveNumber=%s"
+                                  "                                           and kktRegId=%s and shiftNumber=%s and "
+                                  "                                           numid=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_ITEMS "
+                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                  "             nds0, nds10, nds18, name, price, quantity, sum)  "
+                                  "    VALUES  (%s, %s, %s, %s, %s, "
+                                  "             %s, %s, %s, %s, %s, %s, %s)"
+                                  "  END "
+                                  "END", items)
+        if ind_property:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_PROPERTIES WHERE fiscalDocumentNumber=%s and "
+                                  "                                           fiscalDriveNumber=%s"
+                                  "                                           and kktRegId=%s and shiftNumber=%s and "
+                                  "                                           numid=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_PROPERTIES "
+                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                  "             keys, value)  "
+                                  "    VALUES  (%s, %s, %s, %s, %s, "
+                                  "             %s, %s)"
+                                  "  END "
+                                  "END", properties)
+        if ind_modifier:
+            cursor_ms.executemany("BEGIN "
+                                  "  IF NOT EXISTS "
+                                  "    (SELECT 1 FROM RU_T_FISCAL_MODIFIERS WHERE fiscalDocumentNumber=%s and "
+                                  "                                           fiscalDriveNumber=%s"
+                                  "                                           and kktRegId=%s and shiftNumber=%s and "
+                                  "                                           numid=%s)"
+                                  "  BEGIN "
+                                  "    INSERT INTO RU_T_FISCAL_MODIFIERS "
+                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                  "             discountsum)  "
+                                  "    VALUES  (%s, %s, %s, %s, %s, "
+                                  "             %s)"
+                                  "  END "
+                                  "END", modifiers)
 
         conn_ms.commit()
         conn_ms.close()
+        print "Program is Finished."
+
 
 if __name__ == "__main__":
     main()
 
-
-
-
-        #requests.get('https://api.sbis.ru/ofd/v1/orgs/7825335145/kkts/0000182040024937/storages/8710000100086130/'
-                     #'docs?dateFrom=2017-05-01T00:00:00&limit=5', cookies=cooks)
