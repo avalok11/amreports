@@ -66,21 +66,25 @@ def main():
     print (connection.status_code)
     print (connection.url)
     print (cooks)
+    test = True
 
     # ===========================
     # ПОДКЛЮЧНИЕ БАЗЫ PL
     # ===========================
     # make a connection to MSSQL iBase RU server
-    conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
-                              database=vl.db_ms, charset='utf8')
-    cursor_ms = conn_ms.cursor()
+    if test is False:
+        conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
+                                  database=vl.db_ms, charset='utf8')
+        cursor_ms = conn_ms.cursor()
 
     # ====================
     # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
     # ====================
     fn_list = pd.DataFrame()
-    regid = reg_kkt(cursor_ms)
-    #regid= (('0000612404012879',), ('0000612219058428',), ('0000612124004976',))
+    if test is False:
+        regid = reg_kkt(cursor_ms)
+    else:
+        regid = (('0000083853048447',), ('0000084015044351',))
     for k in regid:
         dat = pd.DataFrame(list_fn(cooks, k[0], inn='7825335145', status=2))
         if 'effectiveTo' not in dat.columns.values:
@@ -109,20 +113,21 @@ def main():
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
     # ===========================
     # УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
-    cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_DRIVE;')
+    if test is False:
+        cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_DRIVE;')
 
-    cursor_ms.executemany("BEGIN "
-                          "  IF NOT EXISTS "
-                          "    (SELECT 1 FROM RU_T_FISCAL_DRIVE WHERE regId=%s and storageId=%s)"
-                          "  BEGIN "
-                          "    INSERT INTO RU_T_FISCAL_DRIVE "
-                          "     (effectiveFrom, effectiveTo, model, regId, status, storageId) "
-                          "    VALUES (%s, %s, %s, %s, %s, %s)"
-                          "  END "
-                          "END", drive_list)
+        cursor_ms.executemany("BEGIN "
+                              "  IF NOT EXISTS "
+                              "    (SELECT 1 FROM RU_T_FISCAL_DRIVE WHERE regId=%s and storageId=%s)"
+                              "  BEGIN "
+                              "    INSERT INTO RU_T_FISCAL_DRIVE "
+                              "     (effectiveFrom, effectiveTo, model, regId, status, storageId) "
+                              "    VALUES (%s, %s, %s, %s, %s, %s)"
+                              "  END "
+                              "END", drive_list)
 
-    conn_ms.commit()
-    conn_ms.close()
+        conn_ms.commit()
+        conn_ms.close()
 
 if __name__ == "__main__":
     main()

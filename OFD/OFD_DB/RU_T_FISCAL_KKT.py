@@ -59,6 +59,7 @@ def main():
     print (connection.status_code)
     print (connection.url)
     print (cooks)
+    test = True
 
     # ====================
     # ПОЛУЧЕНИЕ СПИСКА ПРИНТЕРОВ
@@ -82,25 +83,26 @@ def main():
     # ПОДКЛЮЧНИЕ БАЗЫ PL И ЗАГРУЗКА ПОЛУЧЕННОЙ ИНФОРМАЦИИ ИЗ ОФД В ДБ
     # ===========================
     # make a connection to MSSQL iBase RU server
-    conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
-                              database=vl.db_ms, charset='utf8')
-    cursor_ms = conn_ms.cursor()
+    if test is False:
+        conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
+                                  database=vl.db_ms, charset='utf8')
+        cursor_ms = conn_ms.cursor()
     # ===========================
     # ОБНОВЛЕНИЕ ДАННЫХ В БАЗЕ
     # ===========================
     # УДАЛЯЕМ ВСЕ И ПОТОМ ВСТАВЛЯЕМ
-    cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_KKT;')
-    cursor_ms.executemany("BEGIN "
-                          "  IF NOT EXISTS "
-                          "    (SELECT 1 FROM RU_T_FISCAL_KKT WHERE factoryId=%s)"
-                          "  BEGIN "
-                          "    INSERT INTO RU_T_FISCAL_KKT (address,factoryId,model,regId,status) "
-                          "    VALUES (%s, %s, %s, %s, %s)"
-                          "  END "
-                          "END", kkt_list)
+        cursor_ms.execute('TRUNCATE TABLE RU_T_FISCAL_KKT;')
+        cursor_ms.executemany("BEGIN "
+                              "  IF NOT EXISTS "
+                              "    (SELECT 1 FROM RU_T_FISCAL_KKT WHERE factoryId=%s)"
+                              "  BEGIN "
+                              "    INSERT INTO RU_T_FISCAL_KKT (address,factoryId,model,regId,status) "
+                              "    VALUES (%s, %s, %s, %s, %s)"
+                              "  END "
+                              "END", kkt_list)
 
-    conn_ms.commit()
-    conn_ms.close()
+        conn_ms.commit()
+        conn_ms.close()
 
 if __name__ == "__main__":
     main()

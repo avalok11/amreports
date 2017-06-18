@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 import pymssql
 import validation as vl
+import sys
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -27,7 +28,7 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
     return response, response.cookies
 
 
-def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
+def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'):
     """
 
     :param cooks: получаем после успешного подклчения к ОФД
@@ -62,9 +63,13 @@ def list_checks(cooks, regid, storageid, datefrom, inn='7825335145'):
             1069	message	сообщение оператору	Array[объект]	0..n
             1084	properties	дополнительный реквизит	Array[объект]	0..n
     """
-
-    response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
-                            + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000', cookies=cooks)
+    if dateto is None:
+        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
+                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=350', cookies=cooks)  # + '&limit=1000'
+    else:
+        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
+                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&dateTo=' + str(dateto) +
+                                '&limit=100', cookies=cooks)
     return response.json()
 
 
@@ -99,8 +104,17 @@ def reg_drive(cursor_ms):
     return cursor_ms.fetchall()
 
 
-def main(hour_frame=38):
-    test = False
+def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=2):
+    '''
+
+    :param regid: регистрационный номер принтера
+    :param storageid: регистрационный номер ФН
+    :param dateFrom: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
+    :param dateTo: по какую дату хоти забирать данные
+    :param hour_frame: какой сдвиг назад часов, используется по умолчанию
+    :return:
+    '''
+    test = True
     # ====================
     # АТОРИЗАЦИЯ
     # ====================
@@ -131,11 +145,51 @@ def main(hour_frame=38):
     #      ('0000574048062921', '8710000100779443'),
     #      ('0000573980017345', '8710000100779164'))
 
-    if test is False:
-        id = reg_drive(cursor_ms)
+    if regid is None or storageid is None:
+        if test is False:
+            id = reg_drive(cursor_ms)
+        else:
+            regid = '0000083853048447'
+            storageid = '8710000100099930'
+            id = ((regid, storageid),)
+    else:
+        id = ((regid, storageid),)
+
     # id = (('0000544620064870', '8710000100512111'),)
-    #id = (('0000509048051340', '8710000100373867'),)
+    # id = (('0000509048051340', '8710000100373867'),)
     print id
+
+    dateTo = '2017-06-11T20:00:00'
+    dateFrom = '2017-06-09T20:00:00'
+    # ====================
+    # определение даты начала сбора информации
+    # ====================
+    if dateFrom is None:
+        todayx = datetime.datetime.today()
+        day_check = todayx - datetime.timedelta(hours=hour_frame)
+        dateFrom = day_check.isoformat()
+        #dateTo = today.isoformat()
+        #dateTo = '2017-06-19T20:00:00'
+        #dateFrom = '2017-06-18T00:00:00'
+        print "Data from to check: ", dateFrom
+        print "Data to check: ", dateTo
+        day = day_check.date().isoformat()
+    elif dateFrom is not None:
+        day_check = datetime.datetime.strptime(dateFrom, '%Y-%m-%dT%H:%M:%S')
+        dateFrom = day_check.isoformat()
+        print "Data from to check: ", dateFrom
+        print "Data toto check: ", dateTo
+        day = day_check.date().isoformat()
+    if dateTo is not None:
+        todayx = datetime.datetime.strptime(dateTo, '%Y-%m-%dT%H:%M:%S')
+    if (dateTo is not None) and (dateTo < dateFrom):
+        print "Error datetime, date From: ", dateFrom, ", dateTo: ", dateTo
+        sys.exit()
+
+
+
+
+
 
     # ======================
     # предварительное определение полей значений
@@ -158,18 +212,40 @@ def main(hour_frame=38):
     items = pd.DataFrame()
     properties = pd.DataFrame()
     modifiers = pd.DataFrame()
-
-    today = datetime.datetime.today()
-    day_check = today - datetime.timedelta(hours=hour_frame)
-    datas = day_check.isoformat()
-
-    print "Data to check: ", datas
-    day = day_check.date().isoformat()
-
+    data = pd.DataFrame()
 
     for k in id:
-        print k[0], k[1]
-        data = pd.DataFrame((list_checks(cooks, k[0], k[1], datas)))
+        print "Регистрационный номер принтера и ФН ", k[0], k[1]
+        if dateTo is None:
+            try:
+                data = pd.DataFrame((list_checks(cooks, k[0], k[1], dateFrom)))
+            except ValueError:
+                datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom), index=[0])
+        else:
+            data_check = 0
+            while data_check == 0:
+                try:
+                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom, dateTo))
+                except ValueError:
+                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom, dateTo), index=[0])
+                try:
+                    rec = datat['receipt'].dropna()
+                    rec = rec.iloc[-1]
+                    del(rec['items'])
+                    df = pd.DataFrame(rec, index=[0])
+                    data_check = 1
+                    date = datetime.datetime.fromtimestamp(df['dateTime'])
+                    if date < todayx:
+                        data_check = 0
+                        print "собраны данные с ", dateFrom, " по ", date
+                        print "еще"
+                        dateFrom = date.isoformat()
+                    else:
+                        print "достигли финальной даты"
+                except KeyError:
+                    data_check = 1
+                    print "Больше нет данных."
+                data = pd.concat([data, datat])
         try:
             open_shift_tmp = data['openShift'].dropna()
             for i in open_shift_tmp:
@@ -191,8 +267,10 @@ def main(hour_frame=38):
             None
         try:
             receipt_tmp = data['receipt'].dropna()
+            counts = 0
             for i in receipt_tmp:
-                print "Data from OFD: ", i
+                counts += 1
+                #print "Data from OFD: ", i
                 try:
                     items_tmp = i['items']
                     indeks = 0
@@ -251,6 +329,7 @@ def main(hour_frame=38):
                 df = nds_check(df)
                 df.drop('rawData', axis=1, inplace=True)
                 receipt = pd.concat([receipt, df])
+            print "Total amount of RECEIPTS: ", counts
         except KeyError:
             None
     connection.close()
@@ -265,8 +344,7 @@ def main(hour_frame=38):
         open_shift.drop('rawData', axis=1, inplace=True)
         open_shift.to_csv('openshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
         open_shift = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
-        print "OPEN SHIFTS"
-        print open_shift
+        print "OPEN SHIFTS", len(open_shift)
         ind_oshift = True
     except KeyError:
         None
@@ -285,8 +363,7 @@ def main(hour_frame=38):
         close_shift.drop('rawData', axis=1, inplace=True)
         close_shift.to_csv('closeshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
         close_shift = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
-        print "CLOSED SHIFTS"
-        print close_shift
+        print "CLOSED SHIFTS", len(close_shift)
         ind_cshift = True
     except KeyError:
         None
@@ -307,8 +384,7 @@ def main(hour_frame=38):
         receipt['ecashTotalSum'] /= 100
         receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
         receipt = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
-        print "RECEIPT"
-        print receipt
+        print "RECEIPT", len(receipt)
         ind_receipt = True
     except KeyError:
         None
@@ -329,8 +405,7 @@ def main(hour_frame=38):
         items['price'] /= 100
         items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
         items = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
-        print "RECEIPT"
-        print items
+        print "ITEMS", len(items)
         ind_item = True
     except KeyError:
         None
@@ -345,8 +420,7 @@ def main(hour_frame=38):
                                  'key', 'value']]
         properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
         properties = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in properties.values.tolist()]
-        print "PROPERIES"
-        print properties
+        print "PROPERTIES", len(properties)
         ind_property = True
     except KeyError:
         None
@@ -361,8 +435,7 @@ def main(hour_frame=38):
                                'discountSum']]
         modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')
         modifiers = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in modifiers.values.tolist()]
-        print "MODIFIERS"
-        print modifiers
+        print "MODIFIERS", len(modifiers)
         ind_modifier = True
     except KeyError:
         None
