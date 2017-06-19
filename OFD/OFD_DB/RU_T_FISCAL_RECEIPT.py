@@ -73,10 +73,6 @@ def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'
     return response.json()
 
 
-# def reg_kkt(cursor_ms):
-#    cursor_ms.execute("SELECT regId FROM RU_T_FISCAL_KKT;")
-#    return cursor_ms.fetchall()
-
 def nds_check(df):
     if 'ndsNo' in df.columns.values:
         df['nds0'] = df['ndsNo']
@@ -104,17 +100,17 @@ def reg_drive(cursor_ms):
     return cursor_ms.fetchall()
 
 
-def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=2):
-    '''
-
-    :param regid: регистрационный номер принтера
-    :param storageid: регистрационный номер ФН
-    :param dateFrom: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
-    :param dateTo: по какую дату хоти забирать данные
+def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2):
+    """
+    :param test:
+    :param reg_id: регистрационный номер принтера
+    :param storage_id: регистрационный номер ФН
+    :param date_from: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
+    :param date_to: по какую дату хоти забирать данные
     :param hour_frame: какой сдвиг назад часов, используется по умолчанию
     :return:
-    '''
-    test = True
+    """
+
     # ====================
     # АТОРИЗАЦИЯ
     # ====================
@@ -145,51 +141,47 @@ def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=
     #      ('0000574048062921', '8710000100779443'),
     #      ('0000573980017345', '8710000100779164'))
 
-    if regid is None or storageid is None:
+    if reg_id is None or storage_id is None:
         if test is False:
             id = reg_drive(cursor_ms)
         else:
-            regid = '0000083853048447'
-            storageid = '8710000100099930'
-            id = ((regid, storageid),)
+            reg_id = '0000083853048447'
+            storage_id = '8710000100099930'
+            id = ((reg_id, storage_id),)
     else:
-        id = ((regid, storageid),)
+        id = ((reg_id, storage_id),)
 
     # id = (('0000544620064870', '8710000100512111'),)
     # id = (('0000509048051340', '8710000100373867'),)
-    print id
+    print "Всего принтеров и фискальных накопителей", len(id)
 
-    dateTo = '2017-06-11T20:00:00'
-    dateFrom = '2017-06-09T20:00:00'
+    # date_to = '2017-06-11T20:00:00'
+    # date_from = '2017-06-09T20:00:00'
     # ====================
     # определение даты начала сбора информации
     # ====================
-    if dateFrom is None:
+    if date_from is None:
         todayx = datetime.datetime.today()
         day_check = todayx - datetime.timedelta(hours=hour_frame)
-        dateFrom = day_check.isoformat()
-        #dateTo = today.isoformat()
-        #dateTo = '2017-06-19T20:00:00'
-        #dateFrom = '2017-06-18T00:00:00'
-        print "Data from to check: ", dateFrom
-        print "Data to check: ", dateTo
+        date_from = day_check.isoformat()
+        #date_to = today.isoformat()
+        #date_to = '2017-06-19T20:00:00'
+        #date_from = '2017-06-18T00:00:00'
+        print "Data from to check: ", date_from
+        print "Data to check: ", date_to
         day = day_check.date().isoformat()
-    elif dateFrom is not None:
-        day_check = datetime.datetime.strptime(dateFrom, '%Y-%m-%dT%H:%M:%S')
-        dateFrom = day_check.isoformat()
-        print "Data from to check: ", dateFrom
-        print "Data toto check: ", dateTo
+    elif date_from is not None:
+        todayx = datetime.datetime.today()
+        day_check = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S')
+        date_from = day_check.isoformat()
+        print "Data from is set to: ", date_from
+        print "Data to check: ", date_to
         day = day_check.date().isoformat()
-    if dateTo is not None:
-        todayx = datetime.datetime.strptime(dateTo, '%Y-%m-%dT%H:%M:%S')
-    if (dateTo is not None) and (dateTo < dateFrom):
-        print "Error datetime, date From: ", dateFrom, ", dateTo: ", dateTo
+    if date_to is not None:
+        todayx = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')
+    if (date_to is not None) and (date_to < date_from):
+        print "Error datetime, date From: ", date_from, ", date_to: ", date_to
         sys.exit()
-
-
-
-
-
 
     # ======================
     # предварительное определение полей значений
@@ -214,38 +206,46 @@ def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=
     modifiers = pd.DataFrame()
     data = pd.DataFrame()
 
+    from_d = date_from
+    amount_of_kkt = len(id)
     for k in id:
+        print "Осталось проверить кол-во принтеров: ", amount_of_kkt
+        amount_of_kkt -= 1
         print "Регистрационный номер принтера и ФН ", k[0], k[1]
-        if dateTo is None:
-            try:
-                data = pd.DataFrame((list_checks(cooks, k[0], k[1], dateFrom)))
-            except ValueError:
-                datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom), index=[0])
-        else:
-            data_check = 0
-            while data_check == 0:
+        data_check = 0
+        date_from = from_d
+        length = 0
+        while data_check == 0:
+            if date_to is None:
                 try:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom, dateTo))
+                    datat = pd.DataFrame((list_checks(cooks, k[0], k[1], date_from)))
                 except ValueError:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], dateFrom, dateTo), index=[0])
+                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from), index=[0])
+            else:
                 try:
-                    rec = datat['receipt'].dropna()
-                    rec = rec.iloc[-1]
-                    del(rec['items'])
-                    df = pd.DataFrame(rec, index=[0])
-                    data_check = 1
-                    date = datetime.datetime.fromtimestamp(df['dateTime'])
-                    if date < todayx:
-                        data_check = 0
-                        print "собраны данные с ", dateFrom, " по ", date
-                        print "еще"
-                        dateFrom = date.isoformat()
-                    else:
-                        print "достигли финальной даты"
-                except KeyError:
-                    data_check = 1
-                    print "Больше нет данных."
-                data = pd.concat([data, datat])
+                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to))
+                except ValueError:
+                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to), index=[0])
+            try:
+                rec = datat['receipt'].dropna()
+                rec = rec.iloc[-1]
+                del(rec['items'])
+                df = pd.DataFrame(rec, index=[0])
+                data_check = 1
+                date = datetime.datetime.fromtimestamp(df['dateTime'])
+                if date < todayx:
+                    data_check = 0
+                    print "  собраны данные с ", date_from, " по ", date
+                    print "    еще"
+                    date_from = date.isoformat()
+                else:
+                    print "  достигли финальной даты"
+            except KeyError:
+                data_check = 1
+                print "  Больше нет данных."
+            length += len(datat)
+            data = pd.concat([data, datat])
+        print from_d, "..", todayx, "всего документов", length
         try:
             open_shift_tmp = data['openShift'].dropna()
             for i in open_shift_tmp:
@@ -317,21 +317,13 @@ def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=
                     None
                 df = pd.DataFrame(i, index=[0])
                 df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                # items_tmp = df['items']
-                # df.drop('items', axis=1, inplace=True)
-                # ind = 0
-                # dy = pd.DataFrame()
-                # for y in items_tmp:
-                #    dy = pd.concat([dy, pd.DataFrame(y, index=[ind])])
-                #    ind += 1
-                # df = df.merge(dy, left_index=True, right_index=True, how='inner')
-                # df.fillna(value=0, inplace=True)
                 df = nds_check(df)
                 df.drop('rawData', axis=1, inplace=True)
                 receipt = pd.concat([receipt, df])
-            print "Total amount of RECEIPTS: ", counts
         except KeyError:
             None
+    print "\nGetting data from OFD is finished. Total amount of documents: ", len(data)
+    # print "=======================================\n"
     connection.close()
 
     # ===========================
@@ -549,4 +541,3 @@ def main(regid=None, storageid=None, dateFrom = None, dateTo = None, hour_frame=
 
 if __name__ == "__main__":
     main()
-

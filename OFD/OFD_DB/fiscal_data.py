@@ -6,11 +6,7 @@ import datetime
 
 
 def main():
-    today = datetime.datetime.today()
-    if today.time() < datetime.time(4, 0, 0, 0):
-        r.main(data_q=True)
-    elif today.time() > datetime.time(4, 0, 0, 0):
-        r.main(data_q=False)
+    r.main(test=False, date_from='2017-06-16T00:00:00')
 
 
 if __name__ == "__main__":
