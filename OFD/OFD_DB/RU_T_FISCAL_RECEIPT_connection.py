@@ -25,11 +25,6 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
                                               'login': login,
                                               'password': pwd}),
                              headers={'content-type': 'application/json; charset=utf-8'})
-    print "\nNew connection is established."
-    print (response.status_code)
-    print (response.url)
-    print (response.cookies)
-    print "--------------------------------"
     return response, response.cookies
 
 
@@ -70,11 +65,11 @@ def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'
     """
     if dateto is None:
         response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
-                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000', cookies=cooks)  # + '&limit=1000'
+                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=350', cookies=cooks)  # + '&limit=1000'
     else:
         response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
                                 + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&dateTo=' + str(dateto) +
-                                '&limit=1000', cookies=cooks)
+                                '&limit=100', cookies=cooks)
     return response.json()
 
 
@@ -119,8 +114,14 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ====================
     # АТОРИЗАЦИЯ
     # ====================
-    #connection, cooks = connect()
-
+    connection, cooks = connect()
+    print "\nConnection is established"
+    print "_________________________"
+    print (connection.status_code)
+    print (connection.url)
+    print (cooks)
+    print "_________________________"
+    print "=========================\n"
 
     # ===========================
     # ПОДКЛЮЧНИЕ БАЗЫ PL
@@ -208,7 +209,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     from_d = date_from
     amount_of_kkt = len(id)
     for k in id:
-        connection, cooks = connect()
         print "Осталось проверить кол-во принтеров: ", amount_of_kkt
         amount_of_kkt -= 1
         print "Регистрационный номер принтера и ФН ", k[0], k[1]
@@ -246,117 +246,85 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             length += len(datat)
             data = pd.concat([data, datat])
         print from_d, "..", todayx, "всего документов", length
-        if length != 0:  # проверка получили ли данные (оптимизация скорости)
-            try:
-                t_o = datetime.datetime.today()
-                open_shift_tmp = pd.DataFrame(data['openShift'].dropna().tolist())
-                open_shift_tmp['dateTime'] = open_shift_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #for i in open_shift_tmp:
-                #    df = pd.DataFrame(i, index=[0])
-                #    df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
-                #    open_shift = pd.concat([open_shift, df])
-                open_shift = pd.concat([open_shift, open_shift_tmp])
-                t_of = datetime.datetime.today()
-                print " 1. len of open_shift:", len(open_shift_tmp), "time: ", t_of-t_o
-            except KeyError:
-                None
-            try:
-                t_c = datetime.datetime.today()
-                close_shift_tmp = pd.DataFrame(data['closeShift'].dropna().tolist())
-                close_shift_tmp['dateTime'] = close_shift_tmp['dateTime']\
-                    .apply(lambda x: datetime.datetime.fromtimestamp(x))
-                close_shift_tmp['notTransmittedDocumentsDateTime'] = close_shift_tmp['notTransmittedDocumentsDateTime']\
-                    .apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #for i in close_shift_tmp:
-                #    df = pd.DataFrame(i, index=[0])
-                #    df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
-                #    df['notTransmittedDocumentsDateTime'] = datetime.datetime.fromtimestamp(
-                #        df['notTransmittedDocumentsDateTime'])
-                #    # df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                close_shift = pd.concat([close_shift, close_shift_tmp])
-                t_cf = datetime.datetime.today()
-                print " 2. len of close_shift: ", len(close_shift_tmp), "time: ", t_cf-t_c
-            except KeyError:
-                None
-            try:
-                t_r = datetime.datetime.today()
-                receipt_tmp = pd.DataFrame(data['receipt'].dropna().tolist())
-                counts = 0
-                receipt_tmp['dateTime'] = receipt_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                receipt_tmp = nds_check(receipt_tmp)
-                receipt_tmp.drop('rawData', axis=1, inplace=True)
-                # items
-                items_tmp = receipt_tmp['items'].dropna()
-                print type(items_tmp)
-                #items_tmp = items_tmp[0]
-                items_tmp = pd.DataFrame(receipt_tmp['items'].dropna().tolist())
-                items_tmp['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
-                items_tmp['kktRegId'] = receipt_tmp['kktRegId']
-                items_tmp['shiftNumber'] = receipt_tmp['shiftNumber']
-                items_tmp['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
-                items_tmp = nds_check(items_tmp)
-                for i in receipt_tmp:
-                    counts += 1
-                    #print "Data from OFD: ", i
-                    try:
-                        items_tmp = i['items']
-                        indeks = 0
-                        for y in items_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            df = nds_check(df)
-                            items = pd.concat([items, df])
-                            None
-                        del (i['items'])
-                    except KeyError:
+        try:
+            open_shift_tmp = data['openShift'].dropna()
+            for i in open_shift_tmp:
+                df = pd.DataFrame(i, index=[0])
+                df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
+                open_shift = pd.concat([open_shift, df])
+        except KeyError:
+            None
+        try:
+            close_shift_tmp = data['closeShift'].dropna()
+            for i in close_shift_tmp:
+                df = pd.DataFrame(i, index=[0])
+                df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
+                df['notTransmittedDocumentsDateTime'] = datetime.datetime.fromtimestamp(
+                    df['notTransmittedDocumentsDateTime'])
+                # df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
+                close_shift = pd.concat([close_shift, df])
+        except KeyError:
+            None
+        try:
+            receipt_tmp = data['receipt'].dropna()
+            counts = 0
+            for i in receipt_tmp:
+                counts += 1
+                #print "Data from OFD: ", i
+                try:
+                    items_tmp = i['items']
+                    indeks = 0
+                    for y in items_tmp:
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
+                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
+                        df['kktRegId'] = i['kktRegId']
+                        df['shiftNumber'] = i['shiftNumber']
+                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
+                        df = nds_check(df)
+                        items = pd.concat([items, df])
                         None
-                    try:
-                        properties_tmp = i['properties']
-                        indeks = 0
-                        for y in properties_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            properties = pd.concat([properties, df])
-                        del (i['properties'])
-                    except KeyError:
-                        None
-                    try:
-                        modifiers_tmp = i['modifiers']
-                        indeks = 0
-                        for y in modifiers_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            modifiers = pd.concat([modifiers, df])
-                        del (i['modifiers'])
-                    except KeyError:
-                        None
-                    #df = pd.DataFrame(i, index=[0])
-                    #df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                    #df = nds_check(df)
-                    #df.drop('rawData', axis=1, inplace=True)
-                    receipt = pd.concat([receipt, receipt_tmp])
-                    items = pd.concat([items_tmp, df])
-                    t_rf = datetime.datetime.today()
-                    print " 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r
-            except KeyError:
-                None
-            print "Connection closed:", datetime.datetime.today(), "\n"
-        connection.close()
+                    del (i['items'])
+                except KeyError:
+                    None
+                try:
+                    properties_tmp = i['properties']
+                    indeks = 0
+                    for y in properties_tmp:
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
+                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
+                        df['kktRegId'] = i['kktRegId']
+                        df['shiftNumber'] = i['shiftNumber']
+                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
+                        properties = pd.concat([properties, df])
+                    del (i['properties'])
+                except KeyError:
+                    None
+                try:
+                    modifiers_tmp = i['modifiers']
+                    indeks = 0
+                    for y in modifiers_tmp:
+                        df = pd.DataFrame(y, index=[indeks])
+                        indeks += 1
+                        df['fiscalDriveNumber'] = i['fiscalDriveNumber']
+                        df['kktRegId'] = i['kktRegId']
+                        df['shiftNumber'] = i['shiftNumber']
+                        df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
+                        modifiers = pd.concat([modifiers, df])
+                    del (i['modifiers'])
+                except KeyError:
+                    None
+                df = pd.DataFrame(i, index=[0])
+                df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
+                df = nds_check(df)
+                df.drop('rawData', axis=1, inplace=True)
+                receipt = pd.concat([receipt, df])
+        except KeyError:
+            None
     print "\nGetting data from OFD is finished. Total amount of documents: ", len(data)
     # print "=======================================\n"
-    #connection.close()
+    connection.close()
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ ОБ ОТКРЫТИИ СМЕН
