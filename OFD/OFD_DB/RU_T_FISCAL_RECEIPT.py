@@ -225,7 +225,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 data_check = 1
                 print "  Больше нет данных."
             length += len(datat)
-            data = pd.concat([data, datat])
+            #data = pd.concat([data, datat])
+            data = datat
         print from_d, "..", todayx, "всего документов", length
 
         if length != 0:  # проверка получили ли данные (оптимизация скорости)
