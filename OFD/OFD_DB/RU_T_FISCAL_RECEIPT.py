@@ -368,6 +368,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         receipt['nds18'] /= 100
         receipt['cashTotalSum'] /= 100
         receipt['ecashTotalSum'] /= 100
+        receipt.fillna(0, inplace=True)
         receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
         receipt = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
         print "RECEIPT", len(receipt)
@@ -388,6 +389,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         items['nds18'] /= 100
         items['sum'] /= 100
         items['price'] /= 100
+        items.fillna(0, inplace=True)
         items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
         items = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
         print "ITEMS", len(items)
