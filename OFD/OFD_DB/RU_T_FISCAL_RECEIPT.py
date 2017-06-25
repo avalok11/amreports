@@ -116,12 +116,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     :return:
     """
 
-    # ====================
-    # АТОРИЗАЦИЯ
-    # ====================
-    #connection, cooks = connect()
-
-
     # ===========================
     # ПОДКЛЮЧНИЕ БАЗЫ PL
     # ===========================
@@ -134,28 +128,18 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ====================
     # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
     # ====================
-    id = (('0000612404012879', '8710000100612901'), ('0000612219058428', '8710000100609863'),
-          ('0000612124004976', '8710000100604073'))
-    # id = (('0000574146027868', '8710000100779501'),
-    #      ('0000574048062921', '8710000100779443'),
-    #      ('0000573980017345', '8710000100779164'))
-
     if reg_id is None or storage_id is None:
         if test is False:
             id = reg_drive(cursor_ms)
         else:
-            reg_id = '0000083853048447'
-            storage_id = '8710000100099930'
+            reg_id = '0000083853048447'  # для тестирования
+            storage_id = '8710000100099930'  # для тестирования
             id = ((reg_id, storage_id),)
     else:
         id = ((reg_id, storage_id),)
 
-    # id = (('0000544620064870', '8710000100512111'),)
-    # id = (('0000509048051340', '8710000100373867'),)
     print "Всего принтеров и фискальных накопителей", len(id)
 
-    # date_to = '2017-06-11T20:00:00'
-    # date_from = '2017-06-09T20:00:00'
     # ====================
     # определение даты начала сбора информации
     # ====================
@@ -163,9 +147,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         todayx = datetime.datetime.today()
         day_check = todayx - datetime.timedelta(hours=hour_frame)
         date_from = day_check.isoformat()
-        #date_to = today.isoformat()
-        #date_to = '2017-06-19T20:00:00'
-        #date_from = '2017-06-18T00:00:00'
         print "Data from to check: ", date_from
         print "Data to check: ", date_to
         day = day_check.date().isoformat()
@@ -215,7 +196,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         data_check = 0
         date_from = from_d
         length = 0
-        while data_check == 0:
+        while data_check == 0:  # проверяем весь ли диапазон дат проверен
             if date_to is None:
                 try:
                     datat = pd.DataFrame((list_checks(cooks, k[0], k[1], date_from)))
@@ -246,20 +227,19 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             length += len(datat)
             data = pd.concat([data, datat])
         print from_d, "..", todayx, "всего документов", length
+
         if length != 0:  # проверка получили ли данные (оптимизация скорости)
+            # ищем открытые смены
             try:
                 t_o = datetime.datetime.today()
                 open_shift_tmp = pd.DataFrame(data['openShift'].dropna().tolist())
                 open_shift_tmp['dateTime'] = open_shift_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #for i in open_shift_tmp:
-                #    df = pd.DataFrame(i, index=[0])
-                #    df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
-                #    open_shift = pd.concat([open_shift, df])
                 open_shift = pd.concat([open_shift, open_shift_tmp])
                 t_of = datetime.datetime.today()
                 print " 1. len of open_shift:", len(open_shift_tmp), "time: ", t_of-t_o
             except KeyError:
                 None
+            # ищем закрытые смены
             try:
                 t_c = datetime.datetime.today()
                 close_shift_tmp = pd.DataFrame(data['closeShift'].dropna().tolist())
@@ -267,96 +247,75 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                     .apply(lambda x: datetime.datetime.fromtimestamp(x))
                 close_shift_tmp['notTransmittedDocumentsDateTime'] = close_shift_tmp['notTransmittedDocumentsDateTime']\
                     .apply(lambda x: datetime.datetime.fromtimestamp(x))
-                #for i in close_shift_tmp:
-                #    df = pd.DataFrame(i, index=[0])
-                #    df['dateTime'] = datetime.datetime.fromtimestamp(df['dateTime'])
-                #    df['notTransmittedDocumentsDateTime'] = datetime.datetime.fromtimestamp(
-                #        df['notTransmittedDocumentsDateTime'])
-                #    # df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
                 close_shift = pd.concat([close_shift, close_shift_tmp])
                 t_cf = datetime.datetime.today()
                 print " 2. len of close_shift: ", len(close_shift_tmp), "time: ", t_cf-t_c
             except KeyError:
                 None
+            # ищем чеки и их содержимое
             try:
                 t_r = datetime.datetime.today()
                 receipt_tmp = pd.DataFrame(data['receipt'].dropna().tolist())
-                counts = 0
                 receipt_tmp['dateTime'] = receipt_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
                 receipt_tmp = nds_check(receipt_tmp)
                 receipt_tmp.drop('rawData', axis=1, inplace=True)
-                # items
-                items_tmp = receipt_tmp['items'].dropna()
-                print type(items_tmp)
-                #items_tmp = items_tmp[0]
-                items_tmp = pd.DataFrame(receipt_tmp['items'].dropna().tolist())
-                items_tmp['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
-                items_tmp['kktRegId'] = receipt_tmp['kktRegId']
-                items_tmp['shiftNumber'] = receipt_tmp['shiftNumber']
-                items_tmp['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
-                items_tmp = nds_check(items_tmp)
-                for i in receipt_tmp:
-                    counts += 1
-                    #print "Data from OFD: ", i
-                    try:
-                        items_tmp = i['items']
-                        indeks = 0
-                        for y in items_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            df = nds_check(df)
-                            items = pd.concat([items, df])
-                            None
-                        del (i['items'])
-                    except KeyError:
-                        None
-                    try:
-                        properties_tmp = i['properties']
-                        indeks = 0
-                        for y in properties_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            properties = pd.concat([properties, df])
-                        del (i['properties'])
-                    except KeyError:
-                        None
-                    try:
-                        modifiers_tmp = i['modifiers']
-                        indeks = 0
-                        for y in modifiers_tmp:
-                            df = pd.DataFrame(y, index=[indeks])
-                            indeks += 1
-                            df['fiscalDriveNumber'] = i['fiscalDriveNumber']
-                            df['kktRegId'] = i['kktRegId']
-                            df['shiftNumber'] = i['shiftNumber']
-                            df['fiscalDocumentNumber'] = i['fiscalDocumentNumber']
-                            modifiers = pd.concat([modifiers, df])
-                        del (i['modifiers'])
-                    except KeyError:
-                        None
-                    #df = pd.DataFrame(i, index=[0])
-                    #df['dateTime'] = df['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
-                    #df = nds_check(df)
-                    #df.drop('rawData', axis=1, inplace=True)
-                    receipt = pd.concat([receipt, receipt_tmp])
-                    items = pd.concat([items_tmp, df])
-                    t_rf = datetime.datetime.today()
-                    print " 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r
+                # содержимое чека - items
+                try:
+                    items_tmp = pd.DataFrame(receipt_tmp['items'].dropna().tolist())
+                    for c in items_tmp.columns.values:
+                        dataf = pd.DataFrame(items_tmp[c].dropna().tolist())
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        items = pd.concat([items, dataf])
+                    items = nds_check(items)
+                except KeyError:
+                    None
+                # properties
+                try:
+                    properties_tmp = pd.DataFrame(receipt_tmp['properties'].dropna().tolist())
+                    for c in properties_tmp.columns.values:
+                        dataf = pd.DataFrame(properties_tmp[c].dropna().tolist())
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        properties = pd.concat([properties, dataf])
+                except KeyError:
+                    None
+                # modifiers
+                try:
+                    modifiers_tmp = pd.DataFrame(receipt_tmp['modifiers'].dropna().tolist())
+                    for c in modifiers_tmp.columns.values:
+                        dataf = pd.DataFrame(modifiers_tmp[c].dropna().tolist())
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        modifiers = pd.concat([modifiers, dataf])
+                except KeyError:
+                    None
+                receipt = pd.concat([receipt, receipt_tmp])
+                t_rf = datetime.datetime.today()
+                print " 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r
             except KeyError:
+                None
+            try:
+                receipt.drop('items', axis=1, inplace=True)
+            except ValueError:
+                None
+            try:
+                receipt.drop('properties', axis=1, inplace=True)
+            except ValueError:
+                None
+            try:
+                receipt.drop('modifiers', axis=1, inplace=True)
+            except ValueError:
                 None
             print "Connection closed:", datetime.datetime.today(), "\n"
         connection.close()
     print "\nGetting data from OFD is finished. Total amount of documents: ", len(data)
-    # print "=======================================\n"
-    #connection.close()
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ ОБ ОТКРЫТИИ СМЕН
@@ -568,7 +527,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
 
         conn_ms.commit()
         conn_ms.close()
-        print "Program is Finished."
+    print "Program is Finished."
 
 
 if __name__ == "__main__":
