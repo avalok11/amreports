@@ -209,8 +209,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                     datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to), index=[0])
             try:
                 rec = datat['receipt'].dropna()
-                rec = rec.iloc[-1]
-                del(rec['items'])
+                #rec = rec.iloc[-1]
+                #del(rec['items'])
                 df = pd.DataFrame(rec, index=[0])
                 data_check = 1
                 date = datetime.datetime.fromtimestamp(df['dateTime'])
@@ -268,6 +268,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                         dataf['kktRegId'] = receipt_tmp['kktRegId']
                         dataf['shiftNumber'] = receipt_tmp['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
                         items = pd.concat([items, dataf])
                     items = nds_check(items)
                 except KeyError:
@@ -281,6 +282,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                         dataf['kktRegId'] = receipt_tmp['kktRegId']
                         dataf['shiftNumber'] = receipt_tmp['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
                         properties = pd.concat([properties, dataf])
                 except KeyError:
                     None
@@ -293,6 +295,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                         dataf['kktRegId'] = receipt_tmp['kktRegId']
                         dataf['shiftNumber'] = receipt_tmp['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
                         modifiers = pd.concat([modifiers, dataf])
                 except KeyError:
                     None
@@ -377,7 +380,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
     ind_item = False
     try:
-        items['numid'] = items.index.values
         items = items[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                        'nds0', 'nds10', 'nds18',
                        'name', 'price', 'quantity', 'sum']]
@@ -398,7 +400,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
     ind_property = False
     try:
-        properties['numid'] = properties.index.values
         properties = properties[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                                  'key', 'value']]
         properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
@@ -413,7 +414,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
     ind_modifier = False
     try:
-        modifiers['numid'] = modifiers.index.values
         modifiers = modifiers[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                                'discountSum']]
         modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')

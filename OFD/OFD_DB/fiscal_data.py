@@ -6,8 +6,8 @@ import datetime
 
 
 def main():
-    r.main(test=True, reg_id='0000083853048447', storage_id='8710000100099930', date_from='2017-06-01T00:00:00',
-           date_to='2017-06-20T00:00:00')
+    r.main(test=True, reg_id='0000083853048447', storage_id='8710000100099930', date_from='2017-06-19T00:00:00',
+           date_to='2017-06-19T12:00:00')
 
     #r.main(test=False, date_from='2017-06-14T00:00:00', date_to='2017-06-15T00:00:00')
 
