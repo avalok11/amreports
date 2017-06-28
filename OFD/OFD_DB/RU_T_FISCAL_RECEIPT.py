@@ -26,11 +26,11 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
                                               'login': login,
                                               'password': pwd}),
                              headers={'content-type': 'application/json; charset=utf-8'})
-    print "\nNew connection is established."
-    print (response.status_code)
-    print (response.url)
-    print (response.cookies)
-    print "--------------------------------"
+    print("\nNew connection is established.")
+    print(response.status_code)
+    print(response.url)
+    print(response.cookies)
+    print("--------------------------------")
     return response, response.cookies
 
 
@@ -71,7 +71,8 @@ def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'
     """
     if dateto is None:
         response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
-                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000', cookies=cooks)  # + '&limit=1000'
+                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000',
+                                cookies=cooks)  # + '&limit=1000'
     else:
         response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
                                 + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&dateTo=' + str(dateto) +
@@ -106,7 +107,8 @@ def reg_drive(cursor_ms):
     return cursor_ms.fetchall()
 
 
-def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2, send_to_sql=True):
+def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2, send_to_sql=True,
+         check_exist=True):
     """
     :param test:
     :param reg_id: регистрационный номер принтера
@@ -139,7 +141,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     else:
         id = ((reg_id, storage_id),)
 
-    print "Всего принтеров и фискальных накопителей", len(id)
+    print("Всего принтеров и фискальных накопителей", len(id))
 
     # ====================
     # определение даты начала сбора информации
@@ -148,20 +150,20 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         todayx = datetime.datetime.today()
         day_check = todayx - datetime.timedelta(hours=hour_frame)
         date_from = day_check.isoformat()
-        print "Data from to check: ", date_from
-        print "Data to check: ", date_to
+        print("Data from to check: ", date_from)
+        print("Data to check: ", date_to)
         day = day_check.date().isoformat()
     elif date_from is not None:
         todayx = datetime.datetime.today()
         day_check = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S')
         date_from = day_check.isoformat()
-        print "Data from is set to: ", date_from
-        print "Data to check: ", date_to
+        print("Data from is set to: ", date_from)
+        print("Data to check: ", date_to)
         day = day_check.date().isoformat()
     if date_to is not None:
         todayx = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')
     if (date_to is not None) and (date_to < date_from):
-        print "Error datetime, date From: ", date_from, ", date_to: ", date_to
+        print("Error datetime, date From: ", date_from, ", date_to: ", date_to)
         sys.exit()
 
     # ======================
@@ -191,9 +193,9 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     amount_of_kkt = len(id)
     connection, cooks = connect()
     for k in id:
-        print "Осталось проверить кол-во принтеров: ", amount_of_kkt
+        print("Осталось проверить кол-во принтеров: ", amount_of_kkt)
         amount_of_kkt -= 1
-        print "Регистрационный номер принтера и ФН ", k[0], k[1]
+        print("Регистрационный номер принтера и ФН ", k[0], k[1])
         data_check = 0
         date_from = from_d
         length = 0
@@ -215,42 +217,42 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 date = datetime.datetime.utcfromtimestamp(df['dateTime'])
                 if date < todayx:
                     data_check = 0
-                    print "  собраны данные с ", date_from, " по ", date
-                    print "    еще"
+                    print("  собраны данные с ", date_from, " по ", date)
+                    print("    еще")
                     date_from = date.isoformat()
                 else:
-                    print "  достигли финальной даты"
+                    print("  достигли финальной даты")
             except KeyError:
                 data_check = 1
-                print "  Больше нет данных."
+                print("  Больше нет данных.")
             length += len(datat)
-            #data = pd.concat([data, datat])
+            # data = pd.concat([data, datat])
             data = datat
-        print from_d, "..", todayx, "всего документов", length
+        print(from_d, "..", todayx, "всего документов", length)
 
         if length != 0:  # проверка получили ли данные (оптимизация скорости)
             # ищем открытые смены
             try:
                 t_o = datetime.datetime.today()
                 open_shift_tmp = pd.DataFrame(data['openShift'].dropna().tolist())
-                open_shift_tmp['dateTime'] = open_shift_tmp['dateTime'].\
+                open_shift_tmp['dateTime'] = open_shift_tmp['dateTime']. \
                     apply(lambda x: datetime.datetime.utcfromtimestamp(x))
                 open_shift = pd.concat([open_shift, open_shift_tmp])
                 t_of = datetime.datetime.today()
-                print " 1. len of open_shift:", len(open_shift_tmp), "time: ", t_of-t_o
+                print(" 1. len of open_shift:", len(open_shift_tmp), "time: ", t_of - t_o)
             except KeyError:
                 None
             # ищем закрытые смены
             try:
                 t_c = datetime.datetime.today()
                 close_shift_tmp = pd.DataFrame(data['closeShift'].dropna().tolist())
-                close_shift_tmp['dateTime'] = close_shift_tmp['dateTime']\
+                close_shift_tmp['dateTime'] = close_shift_tmp['dateTime'] \
                     .apply(lambda x: datetime.datetime.utcfromtimestamp(x))
-                close_shift_tmp['notTransmittedDocumentsDateTime'] = close_shift_tmp['notTransmittedDocumentsDateTime']\
+                close_shift_tmp['notTransmittedDocumentsDateTime'] = close_shift_tmp['notTransmittedDocumentsDateTime'] \
                     .apply(lambda x: datetime.datetime.utcfromtimestamp(x))
                 close_shift = pd.concat([close_shift, close_shift_tmp])
                 t_cf = datetime.datetime.today()
-                print " 2. len of close_shift: ", len(close_shift_tmp), "time: ", t_cf-t_c
+                print(" 2. len of close_shift: ", len(close_shift_tmp), "time: ", t_cf - t_c)
             except KeyError:
                 None
             # ищем чеки и их содержимое
@@ -308,7 +310,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                     None
                 receipt = pd.concat([receipt, receipt_tmp])
                 t_rf = datetime.datetime.today()
-                print " 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r
+                print(" 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r)
             except KeyError:
                 None
             try:
@@ -323,9 +325,9 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 receipt.drop('modifiers', axis=1, inplace=True)
             except ValueError:
                 None
-            print "Connection closed:", datetime.datetime.today(), "\n"
+            print("Connection closed:", datetime.datetime.today(), "\n")
     connection.close()
-    print "\nGetting data from OFD is finished."
+    print("\nGetting data from OFD is finished.")
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ ОБ ОТКРЫТИИ СМЕН
@@ -336,8 +338,11 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                  'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn']]
         open_shift.drop('rawData', axis=1, inplace=True)
         open_shift.to_csv('openshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        open_shift = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
-        print "OPEN SHIFTS", len(open_shift)
+        open_shift_e = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
+        open_shift = open_shift.values.tolist()
+        print("OPEN SHIFTS", len(open_shift))
+        print(open_shift)
+        print(open_shift_e)
         ind_oshift = True
     except KeyError:
         None
@@ -356,7 +361,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         close_shift.drop('rawData', axis=1, inplace=True)
         close_shift.to_csv('closeshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
         close_shift = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
-        print "CLOSED SHIFTS", len(close_shift)
+        print("CLOSED SHIFTS", len(close_shift))
         ind_cshift = True
     except KeyError:
         None
@@ -377,8 +382,11 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         receipt['ecashTotalSum'] /= 100
         receipt.fillna(0, inplace=True)
         receipt.to_csv('receipt_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        receipt = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
-        print "RECEIPT", len(receipt)
+        receipt_e = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
+        receipt = receipt.values.tolist()
+        print("RECEIPT", len(receipt))
+        # print (receipt_e)
+        # print (receipt)
         ind_receipt = True
     except KeyError:
         None
@@ -399,7 +407,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         items.fillna(0, inplace=True)
         items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
         items = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
-        print "ITEMS", len(items)
+        print("ITEMS", len(items))
         ind_item = True
     except KeyError:
         None
@@ -413,7 +421,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                  'key', 'value']]
         properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
         properties = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in properties.values.tolist()]
-        print "PROPERTIES", len(properties)
+        print("PROPERTIES", len(properties))
         ind_property = True
     except KeyError:
         None
@@ -427,7 +435,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                'discountSum']]
         modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')
         modifiers = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in modifiers.values.tolist()]
-        print "MODIFIERS", len(modifiers)
+        print("MODIFIERS", len(modifiers))
         ind_modifier = True
     except KeyError:
         None
@@ -439,22 +447,28 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
     if test is False and send_to_sql is True:
         if ind_oshift:
-            print "\n copy open shifts to MSSQL"
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s "
-                                  "                                            and kktRegId=%s and shiftNumber=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_OSHIFT "
-                                  "         (code, dateTime, fiscalDocumentNumber, fiscalDriveNumber, fiscalSign, "
-                                  "          kktRegId, operator, shiftNumber, usrInn) "
-                                  "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
-                                  "  END "
-                                  "END", open_shift)
+            print("\n copy open shifts to MSSQL")
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "    (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
+                                      "                                            and kktRegId=%s and shiftNumber=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_OSHIFT "
+                                      "         (code, dateTime, fiscalDocumentNumber, fiscalDriveNumber, fiscalSign, "
+                                      "          kktRegId, operator, shiftNumber, usrInn) "
+                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)"
+                                      "  END "
+                                      "END", open_shift_e)
+            else:
+                cursor_ms.executemany("    INSERT INTO RU_T_FISCAL_OSHIFT "
+                                      "         (code, dateTime, fiscalDocumentNumber, fiscalDriveNumber, fiscalSign, "
+                                      "          kktRegId, operator, shiftNumber, usrInn) "
+                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", open_shift)
 
         # ЗАКРЫТЫЕ СМЕНЫ
         if ind_cshift:
-            print "copy closed shifts to MSSQL"
+            print("copy closed shifts to MSSQL")
             cursor_ms.executemany("BEGIN "
                                   "  IF NOT EXISTS "
                                   "    (SELECT 1 FROM RU_T_FISCAL_CSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
@@ -474,25 +488,34 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
 
         # ЧЕКИ
         if ind_receipt:
-            print "copy checks to MSSQL"
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_RECEIPT WHERE dateTime=%s and fiscalDriveNumber=%s"
-                                  "                                            and kktRegId=%s and shiftNumber=%s and "
-                                  "                                            fiscalDocumentNumber=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_RECEIPT "
-                                  "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
-                                  "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
-                                  "             operationType, operator, receiptCode, requestNumber,"
-                                  "             shiftNumber, usr, userInn)  "
-                                  "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                                  "             %s, %s, %s, %s, %s, %s, %s)"
-                                  "  END "
-                                  "END", receipt)
+            print("copy checks to MSSQL")
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "   (SELECT 1 FROM RU_T_FISCAL_RECEIPT WHERE dateTime=%s and fiscalDriveNumber=%s"
+                                      "                                         and kktRegId=%s and shiftNumber=%s and "
+                                      "                                         fiscalDocumentNumber=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_RECEIPT "
+                                      "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
+                                      "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
+                                      "             operationType, operator, receiptCode, requestNumber,"
+                                      "             shiftNumber, usr, userInn)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                                      "             %s, %s, %s, %s, %s, %s, %s)"
+                                      "  END "
+                                      "END", receipt_e)
+            else:
+                cursor_ms.executemany("INSERT INTO RU_T_FISCAL_RECEIPT "
+                                      "            (cashTotalSum, dateTime, ecashTotalSum, fiscalDocumentNumber,"
+                                      "             fiscalDriveNumber, fiscalSign, kktRegId, nds0, nds10, nds18,"
+                                      "             operationType, operator, receiptCode, requestNumber,"
+                                      "             shiftNumber, usr, userInn)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                                      "             %s, %s, %s, %s, %s, %s, %s)", receipt)
         # СОСТАВ ЧЕКА
         if ind_item:
-            print "copy items to MSSQL"
+            print("copy items to MSSQL")
             cursor_ms.executemany("BEGIN "
                                   "  IF NOT EXISTS "
                                   "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=%s and "
@@ -508,7 +531,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                   "  END "
                                   "END", items)
         if ind_property:
-            print "copy properties to MSSQL"
+            print("copy properties to MSSQL")
             cursor_ms.executemany("BEGIN "
                                   "  IF NOT EXISTS "
                                   "    (SELECT 1 FROM RU_T_FISCAL_PROPERTIES WHERE fiscalDocumentNumber=%s and "
@@ -524,7 +547,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                   "  END "
                                   "END", properties)
         if ind_modifier:
-            print "copy modifiers to MSSQL"
+            print("copy modifiers to MSSQL")
             cursor_ms.executemany("BEGIN "
                                   "  IF NOT EXISTS "
                                   "    (SELECT 1 FROM RU_T_FISCAL_MODIFIERS WHERE fiscalDocumentNumber=%s and "
@@ -540,10 +563,10 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                   "  END "
                                   "END", modifiers)
 
-        print "\nCOMMITMENT"
+        print("\nCOMMITMENT")
         conn_ms.commit()
         conn_ms.close()
-    print "Program is Finished."
+    print("Program is Finished.")
 
 
 if __name__ == "__main__":

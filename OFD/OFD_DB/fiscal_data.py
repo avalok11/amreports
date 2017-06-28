@@ -11,17 +11,18 @@ def main():
     today = datetime.datetime.today().date().isoformat()
     filename = "message_"+today+".log"
     log_file = open(filename, "w")
-    sys.stdout = log_file
-    print "this will be written to message.log1"
+    #sys.stdout = log_file
+    print ("this will be written to message.log1")
 
     #r.main(test=False, reg_id='0000083853048447', storage_id='8710000100099930', date_from='2017-06-11T00:00:00',
     #       date_to='2017-06-19T00:00:00')
-    r.main(test=False, date_from='2017-06-24T00:00:00', date_to='2017-06-26T00:00:00', send_to_sql=False)
+    r.main(test=True, date_from='2017-06-24T00:00:00', date_to='2017-06-24T12:00:00', send_to_sql=False,
+           check_exist=False)
     #, reg_id='0000580632035623', storage_id='8710000100537947', date_from='2017-06-27T10:00:00')
 
     #r.main(test=False, date_from='2017-06-14T00:00:00', date_to='2017-06-15T00:00:00')
 
-    print "this will be written to message.log2"
+    print ("this will be written to message.log2")
     sys.stdout = old_stdout
     log_file.close()
 
