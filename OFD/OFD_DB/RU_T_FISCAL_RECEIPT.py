@@ -341,8 +341,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         open_shift_e = [((x[1], x[3], x[5], x[7]) + tuple(x)) for x in open_shift.values.tolist()]
         open_shift = open_shift.values.tolist()
         print("OPEN SHIFTS", len(open_shift))
-        print(open_shift)
-        print(open_shift_e)
         ind_oshift = True
     except KeyError:
         None
@@ -360,7 +358,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                    'shiftNumber', 'userInn']]
         close_shift.drop('rawData', axis=1, inplace=True)
         close_shift.to_csv('closeshift_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        close_shift = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
+        close_shift_e = [((x[1], x[6], x[9], x[15]) + tuple(x)) for x in close_shift.values.tolist()]
+        close_shift = close_shift.values.tolist()
         print("CLOSED SHIFTS", len(close_shift))
         ind_cshift = True
     except KeyError:
@@ -385,8 +384,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         receipt_e = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
         receipt = receipt.values.tolist()
         print("RECEIPT", len(receipt))
-        # print (receipt_e)
-        # print (receipt)
         ind_receipt = True
     except KeyError:
         None
@@ -406,7 +403,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         items['price'] /= 100
         items.fillna(0, inplace=True)
         items.to_csv('items_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        items = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
+        items_e = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in items.values.tolist()]
+        items = items.values.tolist()
         print("ITEMS", len(items))
         ind_item = True
     except KeyError:
@@ -420,7 +418,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         properties = properties[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                                  'key', 'value']]
         properties.to_csv('properties_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        properties = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in properties.values.tolist()]
+        properties_e = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in properties.values.tolist()]
+        properties = properties.values.tolist()
         print("PROPERTIES", len(properties))
         ind_property = True
     except KeyError:
@@ -434,7 +433,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         modifiers = modifiers[['fiscalDocumentNumber', 'fiscalDriveNumber', 'kktRegId', 'shiftNumber', 'numid',
                                'discountSum']]
         modifiers.to_csv('modifiers_' + str(day) + '.csv', sep=';', encoding='utf-8')
-        modifiers = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in modifiers.values.tolist()]
+        modifiers_e = [((x[0], x[1], x[2], x[3], x[4]) + tuple(x)) for x in modifiers.values.tolist()]
+        modifiers = modifiers.values.tolist()
         print("MODIFIERS", len(modifiers))
         ind_modifier = True
     except KeyError:
@@ -469,22 +469,32 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         # ЗАКРЫТЫЕ СМЕНЫ
         if ind_cshift:
             print("copy closed shifts to MSSQL")
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_CSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
-                                  "                                            and kktRegId=%s and shiftNumber=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_CSHIFT "
-                                  "           (code, dateTime, documentsQuantity, fiscalDocumentNumber,"
-                                  "            fiscalDriveExhaustionSign, fiscalDriveMemoryExceededSign,"
-                                  "            fiscalDriveNumber, fiscalDriveReplaceRequiredSign, fiscalSign, kktRegId,"
-                                  "            notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
-                                  "            ofdResponseTimeoutSign, operator, receiptsQuantity,"
-                                  "            shiftNumber, userInn)"
-                                  "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
-                                  "            %s, %s, %s, %s, %s, %s, %s)"
-                                  "  END "
-                                  "END", close_shift)
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "    (SELECT 1 FROM RU_T_FISCAL_CSHIFT WHERE dateTime=%s and fiscalDriveNumber=%s"
+                                      "                                            and kktRegId=%s and shiftNumber=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_CSHIFT "
+                                      "           (code, dateTime, documentsQuantity, fiscalDocumentNumber,"
+                                      "            fiscalDriveExhaustionSign, fiscalDriveMemoryExceededSign,"
+                                      "        fiscalDriveNumber, fiscalDriveReplaceRequiredSign, fiscalSign, kktRegId,"
+                                      "            notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
+                                      "            ofdResponseTimeoutSign, operator, receiptsQuantity,"
+                                      "            shiftNumber, userInn)"
+                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
+                                      "            %s, %s, %s, %s, %s, %s, %s)"
+                                      "  END "
+                                      "END", close_shift_e)
+            else:
+                cursor_ms.executemany("INSERT INTO RU_T_FISCAL_CSHIFT "
+                                      "           (code, dateTime, documentsQuantity, fiscalDocumentNumber,"
+                                      "            fiscalDriveExhaustionSign, fiscalDriveMemoryExceededSign,"
+                                      "        fiscalDriveNumber, fiscalDriveReplaceRequiredSign, fiscalSign, kktRegId,"
+                                      "            notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
+                                      "            ofdResponseTimeoutSign, operator, receiptsQuantity,"
+                                      "            shiftNumber, userInn)"
+                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ", close_shift)
 
         # ЧЕКИ
         if ind_receipt:
@@ -516,52 +526,72 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         # СОСТАВ ЧЕКА
         if ind_item:
             print("copy items to MSSQL")
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=%s and "
-                                  "                                           fiscalDriveNumber=%s"
-                                  "                                           and kktRegId=%s and shiftNumber=%s and "
-                                  "                                           numid=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_ITEMS "
-                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
-                                  "             nds0, nds10, nds18, name, price, quantity, sum)  "
-                                  "    VALUES  (%s, %s, %s, %s, %s, "
-                                  "             %s, %s, %s, %s, %s, %s, %s)"
-                                  "  END "
-                                  "END", items)
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=%s and "
+                                      "                                           fiscalDriveNumber=%s"
+                                      "                                         and kktRegId=%s and shiftNumber=%s and "
+                                      "                                           numid=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_ITEMS "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             nds0, nds10, nds18, name, price, quantity, sum)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, "
+                                      "             %s, %s, %s, %s, %s, %s, %s)"
+                                      "  END "
+                                      "END", items_e)
+            else:
+                cursor_ms.executemany("INSERT INTO RU_T_FISCAL_ITEMS "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             nds0, nds10, nds18, name, price, quantity, sum)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, "
+                                      "             %s, %s, %s, %s, %s, %s, %s)", items)
         if ind_property:
             print("copy properties to MSSQL")
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_PROPERTIES WHERE fiscalDocumentNumber=%s and "
-                                  "                                           fiscalDriveNumber=%s"
-                                  "                                           and kktRegId=%s and shiftNumber=%s and "
-                                  "                                           numid=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_PROPERTIES "
-                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
-                                  "             keys, value)  "
-                                  "    VALUES  (%s, %s, %s, %s, %s, "
-                                  "             %s, %s)"
-                                  "  END "
-                                  "END", properties)
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "    (SELECT 1 FROM RU_T_FISCAL_PROPERTIES WHERE fiscalDocumentNumber=%s and "
+                                      "                                           fiscalDriveNumber=%s"
+                                      "                                         and kktRegId=%s and shiftNumber=%s and "
+                                      "                                           numid=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_PROPERTIES "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             keys, value)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, "
+                                      "             %s, %s)"
+                                      "  END "
+                                      "END", properties_e)
+            else:
+                cursor_ms.executemany("INSERT INTO RU_T_FISCAL_PROPERTIES "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             keys, value)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, ", properties)
+
         if ind_modifier:
             print("copy modifiers to MSSQL")
-            cursor_ms.executemany("BEGIN "
-                                  "  IF NOT EXISTS "
-                                  "    (SELECT 1 FROM RU_T_FISCAL_MODIFIERS WHERE fiscalDocumentNumber=%s and "
-                                  "                                           fiscalDriveNumber=%s"
-                                  "                                           and kktRegId=%s and shiftNumber=%s and "
-                                  "                                           numid=%s)"
-                                  "  BEGIN "
-                                  "    INSERT INTO RU_T_FISCAL_MODIFIERS "
-                                  "            (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
-                                  "             discountsum)  "
-                                  "    VALUES  (%s, %s, %s, %s, %s, "
-                                  "             %s)"
-                                  "  END "
-                                  "END", modifiers)
+            if check_exist:
+                cursor_ms.executemany("BEGIN "
+                                      "  IF NOT EXISTS "
+                                      "    (SELECT 1 FROM RU_T_FISCAL_MODIFIERS WHERE fiscalDocumentNumber=%s and "
+                                      "                                           fiscalDriveNumber=%s"
+                                      "                                         and kktRegId=%s and shiftNumber=%s and "
+                                      "                                           numid=%s)"
+                                      "  BEGIN "
+                                      "    INSERT INTO RU_T_FISCAL_MODIFIERS "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             discountsum)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, "
+                                      "             %s)"
+                                      "  END "
+                                      "END", modifiers_e)
+            else:
+                cursor_ms.executemany("INSERT INTO RU_T_FISCAL_MODIFIERS "
+                                      "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
+                                      "             discountsum)  "
+                                      "    VALUES  (%s, %s, %s, %s, %s, ", modifiers)
 
         print("\nCOMMITMENT")
         conn_ms.commit()
