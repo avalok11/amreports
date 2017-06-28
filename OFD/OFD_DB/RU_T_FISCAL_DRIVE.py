@@ -66,7 +66,7 @@ def main():
     print (connection.status_code)
     print (connection.url)
     print (cooks)
-    test = True
+    test = False
 
     # ===========================
     # ПОДКЛЮЧНИЕ БАЗЫ PL
@@ -93,20 +93,14 @@ def main():
             dat['effectiveFrom'] = None
         dat['regId'] = k[0]
         fn_list = pd.concat([fn_list, dat])
-        print dat
+        #print dat
 
     fn_list = fn_list[['effectiveFrom', 'effectiveTo', 'model', 'regId', 'status', 'storageId']]
     fn_list.to_csv('FN.csv', sep=';', encoding='utf-8')
     connection.close()
-    #print 'effectiveFrom'
-    #print fn_list['effectiveFrom']
-    #fn_list['effectiveFrom'] = pd.to_datetime(fn_list['effectiveFrom'])
-    #print 'effectiveTo'
-    #print fn_list['effectiveTo']
-    #fn_list['effectiveTo'] = pd.to_datetime(fn_list['effectiveTo'])
-    #print '123123123132'
+
     drive_list = [((x[3], x[5],) + tuple(x)) for x in fn_list.values.tolist()]
-    print "\nDRIVE LIST"
+    print "\nDRIVE LIST:", len(drive_list)
     print drive_list
 
     # ===========================
@@ -131,9 +125,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-
-
-
-
-        #requests.get('https://api.sbis.ru/ofd/v1/orgs/7825335145/kkts/0000182040024937/storages/8710000100086130/'
-                     #'docs?dateFrom=2017-05-01T00:00:00&limit=5', cookies=cooks)

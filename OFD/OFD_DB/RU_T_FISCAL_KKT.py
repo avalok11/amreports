@@ -59,7 +59,7 @@ def main():
     print (connection.status_code)
     print (connection.url)
     print (cooks)
-    test = True
+    test = False
 
     # ====================
     # ПОЛУЧЕНИЕ СПИСКА ПРИНТЕРОВ
@@ -73,7 +73,7 @@ def main():
     kkt_list.to_csv('KKT.csv', sep=';', encoding='utf-8')
     #kkt_list = kkt_list.values.tolist()
     kkt_list = [((x[1],) + tuple(x)) for x in kkt_list.values.tolist()]
-    print kkt_list
+    print "Всего обнаружено принтеров:", len(kkt_list)
     a = [(u'00106904517510', u'127253, \u041c\u043e\u0441\u043a\u0432\u0430 \u0433, \u043a\u043c.\u041c\u041a\u0410\u0414 82-\u0439, \u0432\u043b\u0434. 18', u'00106904517510', u'\u0410\u0422\u041e\u041b 77\u0424', u'0000594589009678', u'2'),
          (u'00106903712317', u'162626, \u0412\u043e\u043b\u043e\u0433\u043e\u0434\u0441\u043a\u0430\u044f \u043e\u0431\u043b, \u0433.\u0427\u0435\u0440\u0435\u043f\u043e\u0432\u0435\u0446, \u0443\u043b.\u0413\u043e\u0434\u043e\u0432\u0438\u043a\u043e\u0432\u0430, \u0434.37', u'00106903712317', u'\u0410\u0422\u041e\u041b 77\u0424', u'0000520642017035', u'2')]
 

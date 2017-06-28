@@ -106,7 +106,7 @@ def reg_drive(cursor_ms):
     return cursor_ms.fetchall()
 
 
-def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2, send_to_sql=True):
+def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2):
     """
     :param test:
     :param reg_id: регистрационный номер принтера
@@ -189,8 +189,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
 
     from_d = date_from
     amount_of_kkt = len(id)
-    connection, cooks = connect()
     for k in id:
+        connection, cooks = connect()
         print "Осталось проверить кол-во принтеров: ", amount_of_kkt
         amount_of_kkt -= 1
         print "Регистрационный номер принтера и ФН ", k[0], k[1]
@@ -212,7 +212,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 rec = datat['receipt'].dropna()
                 df = pd.DataFrame(rec, index=[0])
                 data_check = 1
-                date = datetime.datetime.utcfromtimestamp(df['dateTime'])
+                date = datetime.datetime.fromtimestamp(df['dateTime'])
                 if date < todayx:
                     data_check = 0
                     print "  собраны данные с ", date_from, " по ", date
@@ -233,8 +233,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             try:
                 t_o = datetime.datetime.today()
                 open_shift_tmp = pd.DataFrame(data['openShift'].dropna().tolist())
-                open_shift_tmp['dateTime'] = open_shift_tmp['dateTime'].\
-                    apply(lambda x: datetime.datetime.utcfromtimestamp(x))
+                open_shift_tmp['dateTime'] = open_shift_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
                 open_shift = pd.concat([open_shift, open_shift_tmp])
                 t_of = datetime.datetime.today()
                 print " 1. len of open_shift:", len(open_shift_tmp), "time: ", t_of-t_o
@@ -245,9 +244,9 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 t_c = datetime.datetime.today()
                 close_shift_tmp = pd.DataFrame(data['closeShift'].dropna().tolist())
                 close_shift_tmp['dateTime'] = close_shift_tmp['dateTime']\
-                    .apply(lambda x: datetime.datetime.utcfromtimestamp(x))
+                    .apply(lambda x: datetime.datetime.fromtimestamp(x))
                 close_shift_tmp['notTransmittedDocumentsDateTime'] = close_shift_tmp['notTransmittedDocumentsDateTime']\
-                    .apply(lambda x: datetime.datetime.utcfromtimestamp(x))
+                    .apply(lambda x: datetime.datetime.fromtimestamp(x))
                 close_shift = pd.concat([close_shift, close_shift_tmp])
                 t_cf = datetime.datetime.today()
                 print " 2. len of close_shift: ", len(close_shift_tmp), "time: ", t_cf-t_c
@@ -257,7 +256,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             try:
                 t_r = datetime.datetime.today()
                 receipt_tmp = pd.DataFrame(data['receipt'].dropna().tolist())
-                receipt_tmp['dateTime'] = receipt_tmp['dateTime'].apply(lambda x: datetime.datetime.utcfromtimestamp(x))
+                receipt_tmp['dateTime'] = receipt_tmp['dateTime'].apply(lambda x: datetime.datetime.fromtimestamp(x))
                 receipt_tmp = nds_check(receipt_tmp)
                 receipt_tmp.drop('rawData', axis=1, inplace=True)
                 # содержимое чека - items
@@ -265,7 +264,10 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                     items_tmp = receipt_tmp['items'].dropna().tolist()
                     count = 0
                     for i in items_tmp:
+                        print count
+                        print i
                         dataf = pd.DataFrame(i)
+
                         dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
                         dataf['kktRegId'] = receipt_tmp.iloc[count]['kktRegId']
                         dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
@@ -273,37 +275,45 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                         dataf['numid'] = dataf.index.values
                         items = pd.concat([items, dataf])
                         count += 1
+
+                    for c in items_tmp.columns.values:
+                        #dataf = pd.DataFrame(items_tmp[c].dropna().tolist())
+                        #dataf = pd.DataFrame(items_tmp[c])
+                        dataf = pd.DataFrame(items_tmp[c].values.tolist())
+                        #dataf = dataf.replace(None, np.nan)
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
+                        items = pd.concat([items, dataf])
                     items = nds_check(items)
                 except KeyError:
                     None
                 # properties
                 try:
-                    count = 0
-                    properties_tmp = receipt_tmp['properties'].dropna().tolist()
-                    for i in properties_tmp:
-                        dataf = pd.DataFrame(i)
-                        dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
-                        dataf['kktRegId'] = receipt_tmp.iloc[count]['kktRegId']
-                        dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
-                        dataf['fiscalDocumentNumber'] = receipt_tmp.iloc[count]['fiscalDocumentNumber']
-                        dataf['numid'] = dataf.index.values
+                    properties_tmp = pd.DataFrame(receipt_tmp['properties'].dropna().tolist())
+                    for c in properties_tmp.columns.values:
+                        dataf = pd.DataFrame(properties_tmp[c].dropna().tolist())
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
                         properties = pd.concat([properties, dataf])
-                        count += 1
                 except KeyError:
                     None
                 # modifiers
                 try:
-                    count = 0
-                    modifiers_tmp = receipt_tmp['modifiers'].dropna().tolist()
-                    for i in modifiers_tmp:
-                        dataf = pd.DataFrame(i)
-                        dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
-                        dataf['kktRegId'] = receipt_tmp.iloc[count]['kktRegId']
-                        dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
-                        dataf['fiscalDocumentNumber'] = receipt_tmp.iloc[count]['fiscalDocumentNumber']
-                        dataf['numid'] = dataf.index.values
+                    modifiers_tmp = pd.DataFrame(receipt_tmp['modifiers'].dropna().tolist())
+                    for c in modifiers_tmp.columns.values:
+                        dataf = pd.DataFrame(modifiers_tmp[c].dropna().tolist())
+                        dataf['fiscalDriveNumber'] = receipt_tmp['fiscalDriveNumber']
+                        dataf['kktRegId'] = receipt_tmp['kktRegId']
+                        dataf['shiftNumber'] = receipt_tmp['shiftNumber']
+                        dataf['fiscalDocumentNumber'] = receipt_tmp['fiscalDocumentNumber']
+                        dataf['numid'] = c
                         modifiers = pd.concat([modifiers, dataf])
-                        count += 1
                 except KeyError:
                     None
                 receipt = pd.concat([receipt, receipt_tmp])
@@ -324,7 +334,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             except ValueError:
                 None
             print "Connection closed:", datetime.datetime.today(), "\n"
-    connection.close()
+        connection.close()
     print "\nGetting data from OFD is finished."
 
     # ===========================
@@ -437,7 +447,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
-    if test is False and send_to_sql is True:
+    if test is False:
         if ind_oshift:
             print "\n copy open shifts to MSSQL"
             cursor_ms.executemany("BEGIN "
