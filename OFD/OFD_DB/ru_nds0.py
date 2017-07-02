@@ -32,7 +32,7 @@ def main(day_frame=1):
     #                  "  ON k.factoryId=m.factoryId "
     #                  "where nds0 != 0 and (nds10 =0 or nds18 = 0) and dateTime > %s;", day_check)
     print "get data of list KKT from MSSQL"
-    cursor_ms.execute("SELECT DISTINCT m.mpk, r.usr, k.address, r.fiscalDriveNumber, r.kktRegId"
+    cursor_ms.execute("SELECT DISTINCT m.mpk, r.usr, k.address, r.fiscalDriveNumber, r.kktRegId, k.model"
                       "  FROM [DataWarehouse].[dbo].[RU_T_FISCAL_RECEIPT] r"
                       "  INNER JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_KKT] k"
                       "  ON r.kktRegId=k.regId"
@@ -67,7 +67,7 @@ def main(day_frame=1):
 
         # ЗАГОЛОВОК
         string = 0
-        head = ['mpk', 'usr', 'address', 'fiscalDriveNumber', 'kktRegId']
+        head = ['mpk', 'usr', 'address', 'fiscalDriveNumber', 'kktRegId', 'model']
         for c in range(len(head)):
             sheet1.write(string, c, head[c], style1_1)
         string += 1
@@ -84,7 +84,8 @@ def main(day_frame=1):
             sheet1.write(string, c, head[c], style1_1)
         string += 1
         for nds in nds0:
-            sheet1.write(string, 0, nds[0], style1_1)
+            sheet1.write(string, 0, nds[0].strftime('%Y:%m:%d %H:%M:%S'), style1_1)
+            None
             for col in range(len(nds)-1):
                 sheet1.write(string, col+1, nds[col+1], style1_1)
             string += 1
