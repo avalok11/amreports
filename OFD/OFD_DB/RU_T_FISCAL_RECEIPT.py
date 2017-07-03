@@ -185,12 +185,12 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                         'ofdResponseTimeoutSign', 'operator', 'rawData', 'receiptsQuantity',
                                         'shiftNumber', 'userInn'])
     receipt = pd.DataFrame(columns=['cashTotalSum', 'dateTime', 'ecashTotalSum', 'fiscalDocumentNumber',
-                                    'fiscalDriveNumber', 'fiscalSign', 'items', 'kktRegId', 'nds0', 'nds10', 'nds18',
-                                    'operationType', 'operator', 'rawData', 'receiptCode', 'requestNumber',
-                                    'shiftNumber', 'totalSum', 'user', 'userInn'])
+                                    'fiscalDriveNumber', 'fiscalSign', 'kktRegId', 'nds0', 'nds10', 'nds18',
+                                    'operationType', 'operator', 'receiptCode', 'requestNumber',
+                                    'shiftNumber', 'user', 'userInn'])
     open_shift = pd.DataFrame()
     close_shift = pd.DataFrame()
-    receipt = pd.DataFrame()
+    #receipt = pd.DataFrame()
     items = pd.DataFrame()
     properties = pd.DataFrame()
     modifiers = pd.DataFrame()
@@ -391,8 +391,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         receipt_e = [((x[1], x[4], x[6], x[14], x[3]) + tuple(x)) for x in receipt.values.tolist()]
         receipt = [(tuple(x)) for x in receipt.values.tolist()]
         print "RECEIPT", len(receipt)
-        print receipt
-        print receipt_e
         ind_receipt = True
     except KeyError:
         None
@@ -503,7 +501,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "            notTransmittedDocumentsDateTime, notTransmittedDocumentsQuantity,"
                                       "            ofdResponseTimeoutSign, operator, receiptsQuantity,"
                                       "            shiftNumber, userInn)"
-                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, ", close_shift)
+                                      "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s,"
+                                      "            %s, %s, %s, %s, %s, %s, %s ", close_shift)
 
         # ЧЕКИ
         if ind_receipt:
@@ -577,7 +576,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 cursor_ms.executemany("INSERT INTO RU_T_FISCAL_PROPERTIES "
                                       "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
                                       "             keys, value)  "
-                                      "    VALUES  (%s, %s, %s, %s, %s, ", properties)
+                                      "    VALUES  (%s, %s, %s, %s, %s, %s, %s)", properties)
 
         if ind_modifier:
             print "copy modifiers to MSSQL"
@@ -600,7 +599,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                 cursor_ms.executemany("INSERT INTO RU_T_FISCAL_MODIFIERS "
                                       "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
                                       "             discountsum)  "
-                                      "    VALUES  (%s, %s, %s, %s, %s, ", modifiers)
+                                      "    VALUES  (%s, %s, %s, %s, %s, %s)", modifiers)
 
         print"\nCOMMITMENT"
         conn_ms.commit()

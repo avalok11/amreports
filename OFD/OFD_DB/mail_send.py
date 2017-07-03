@@ -12,7 +12,7 @@ from email import encoders
 import validation
 
 
-def main(file_path, report_name, no_senders=True):
+def main(text, header_email, file_path, report_name, no_senders=True):
     # build connection to database
     if not no_senders:
         conn_my = pymysql.connect(host=validation.ip_mysql, user=validation.usr_my, password=validation.pwd_my,
@@ -56,9 +56,9 @@ def main(file_path, report_name, no_senders=True):
     msg['To'] = ", ".join(rcpts)
 
     # Create the body of the message (a plain-text and an HTML version).
-    text = '<p>Во вложении файл с перечисленными Фискальными Принтерами, с некорректными настройками НДС.' \
-           '<p>А также пример чеков с данных принтеров.<br><br>' \
-           '<p>ЭТО АВТОМАТИЧЕСКАЯ РАССЫЛКА, ПРОСЬБА НЕ ОТВЕЧАТЬ НА ДАННОЕ ПИСЬМО.'
+    #text = '<p>Во вложении файл с перечисленными Фискальными Принтерами, с некорректными настройками НДС.' \
+    #       '<p>А также пример чеков с данных принтеров.<br><br>' \
+    #       '<p>ЭТО АВТОМАТИЧЕСКАЯ РАССЫЛКА, ПРОСЬБА НЕ ОТВЕЧАТЬ НА ДАННОЕ ПИСЬМО.'
 
     # Record the MIME types of both parts - text/plain and text/html.
     msg.attach(MIMEText(text, 'html'))
@@ -67,7 +67,7 @@ def main(file_path, report_name, no_senders=True):
     part = MIMEBase('application', "octet-stream")
     part.set_payload(open(file_path, "rb").read())
     encoders.encode_base64(part)
-    part.add_header('Content-Disposition', 'attachment; filename="nds0.xls"')
+    part.add_header('Content-Disposition', header_email)
 
     # Attach parts into message container.
     # According to RFC 2046, the last part of a multipart message, in this case

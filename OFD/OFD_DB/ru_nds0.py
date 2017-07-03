@@ -34,9 +34,9 @@ def main(day_frame=1):
     print "get data of list KKT from MSSQL"
     cursor_ms.execute("SELECT DISTINCT m.mpk, r.usr, k.address, r.fiscalDriveNumber, r.kktRegId, k.model"
                       "  FROM [DataWarehouse].[dbo].[RU_T_FISCAL_RECEIPT] r"
-                      "  INNER JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_KKT] k"
+                      "  LEFT JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_KKT] k"
                       "  ON r.kktRegId=k.regId"
-                      "  INNER JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_DIRVE_MPK] m"
+                      "  LEFT JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_DIRVE_MPK] m"
                       "  ON k.factoryId=m.factoryId"
                       " where r.nds0 != 0 and (r.nds10 =0 or r.nds18 = 0) and r.operationType=1 "
                       " and dateTime > %s;", day_check)
@@ -50,7 +50,7 @@ def main(day_frame=1):
                       "   on r.fiscalDocumentNumber=i.fiscalDocumentNumber and"
                       "   r.fiscalDriveNumber = i.fiscalDriveNumber and"
                       "   r.shiftNumber=i.shiftNumber"
-                      " where dateTime>'2017-06-26T14:17:00' AND r.nds0!=0 AND r.operationType=1 order by i.numid;"
+                      " where dateTime>%s AND r.nds0!=0 AND r.operationType=1 order by i.numid;"
                       , day_check)
     nds0 = cursor_ms.fetchall()
 
@@ -84,7 +84,7 @@ def main(day_frame=1):
             sheet1.write(string, c, head[c], style1_1)
         string += 1
         for nds in nds0:
-            sheet1.write(string, 0, nds[0].strftime('%Y:%m:%d %H:%M:%S'), style1_1)
+            sheet1.write(string, 0, nds[0].strftime('%Y-%m-%d %H:%M:%S'), style1_1)
             None
             for col in range(len(nds)-1):
                 sheet1.write(string, col+1, nds[col+1], style1_1)
@@ -92,7 +92,11 @@ def main(day_frame=1):
 
         book.save("nds0.xls")
         print "send email"
-        m.main('nds0.xls', "NDS 0")
+        text = '<p>Во вложении файл с перечисленными Фискальными Принтерами, с некорректными настройками НДС.' \
+               '<p>А также пример чеков с данных принтеров.<br><br>' \
+               '<p>ЭТО АВТОМАТИЧЕСКАЯ РАССЫЛКА, ПРОСЬБА НЕ ОТВЕЧАТЬ НА ДАННОЕ ПИСЬМО.'
+        header_email = 'attachment; filename="nds0.xls"'
+        # m.main(file_path='nds0.xls', report_name="NDS 0", text=text, header_email=header_email)
     else:
         print "no data to send"
     conn_ms.close()
