@@ -8,7 +8,7 @@ import xlwt
 import mail_send as m
 
 
-def main(day_frame=2):
+def main(day_frame=9):
     # ===========================
     # ОПРЕДЕЛИТЬ ПОЗАВЧЕРАШНИЙ ДЕНЬ
     # ===========================
@@ -43,14 +43,14 @@ def main(day_frame=2):
         try:
             cursor_ms.execute("BEGIN "
                               " IF NOT EXISTS "
-                              " (SELECT 1 FROM RU_T_FISCAL_OSHIFT WHERE dateTime > %s"
+                              " (SELECT 1 FROM RU_T_FISCAL_RECEIPT WHERE dateTime > %s"
                               " AND kktRegId=%s) "
                               " BEGIN"
                               "  SELECT k.regId, k.address, k.factoryId, k.model, m.mpk "
                               "  FROM RU_T_FISCAL_KKT k "
-                              "  LEFT JOIN RU_T_FISCAL_DIRVE_MPK m "
+                              "  LEFT JOIN RU_T_FISCAL_DRIVE_MPK m "
                               "  ON k.factoryId=m.factoryId "
-                              "  WHERE regId=%s "
+                              "  WHERE k.regId=%s AND status=2"
                               " END "
                               "END;", k)
             res = cursor_ms.fetchone()

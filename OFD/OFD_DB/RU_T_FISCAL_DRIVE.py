@@ -87,13 +87,14 @@ def main():
         regid = (('0000083853048447',), ('0000084015044351',))
     for k in regid:
         dat = pd.DataFrame(list_fn(cooks, k[0], inn='7825335145', status=2))
+        print dat
         if 'effectiveTo' not in dat.columns.values:
             dat['effectiveTo'] = None
         if 'effectiveFrom' not in dat.columns.values:
             dat['effectiveFrom'] = None
         dat['regId'] = k[0]
         fn_list = pd.concat([fn_list, dat])
-        #print dat
+        #print
 
     fn_list = fn_list[['effectiveFrom', 'effectiveTo', 'model', 'regId', 'status', 'storageId']]
     fn_list.to_csv('FN.csv', sep=';', encoding='utf-8')

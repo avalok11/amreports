@@ -36,7 +36,7 @@ def main(day_frame=1):
                       "  FROM [DataWarehouse].[dbo].[RU_T_FISCAL_RECEIPT] r"
                       "  LEFT JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_KKT] k"
                       "  ON r.kktRegId=k.regId"
-                      "  LEFT JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_DIRVE_MPK] m"
+                      "  LEFT JOIN [DataWarehouse].[dbo].[RU_T_FISCAL_DRIVE_MPK] m"
                       "  ON k.factoryId=m.factoryId"
                       " where r.nds0 != 0 and (r.nds10 =0 or r.nds18 = 0) and r.operationType=1 "
                       " and dateTime > %s;", day_check)

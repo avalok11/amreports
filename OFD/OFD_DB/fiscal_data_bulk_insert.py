@@ -18,10 +18,10 @@ def main():
     #sys.stdout = log_file
     print ("Start logs.")
     #r.main(test=False, reg_id='0000083853048447', storage_id='8710000100099930', date_from='2017-06-11T00:00:00',
-    #       date_to='2017-06-19T00:00:00')
-    r.main(test=False, reg_id='0000575591049532', storage_id='8710000100774889',
-           date_from='2017-07-05T14:31:00', date_to='2017-07-05T14:39:00', send_to_sql=True, check_exist=True,
-           bulk_insert=True)
+    #       date_to='2017-06-19T00:00:00') 0000734403026836 8710000100978624 date_from='2017-07-18T00:31:00', date_to='2017-07-18T16:39:00',
+    r.main(test=False, reg_id='0000734403026836', storage_id='8710000100978624', hour_frame=2,
+           send_to_sql=True, check_exist=True,
+           bulk_insert=False)
     #, reg_id='00106903709927', storage_id='0000582049063075', date_from='2017-06-27T10:00:00')
 
     #r.main(test=False, date_from='2017-06-14T00:00:00', date_to='2017-06-15T00:00:00')

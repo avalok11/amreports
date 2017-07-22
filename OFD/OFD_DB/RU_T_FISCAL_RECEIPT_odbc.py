@@ -8,7 +8,7 @@ import datetime
 import pymssql
 import validation as vl
 import sys
-import numpy as np
+import pyodbc
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -111,8 +111,11 @@ def reg_drive(cursor_ms):
 
 
 def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2, send_to_sql=True,
-         check_exist=True):
+         check_exist=True, odbc=False):
     """
+    :param send_to_sql:
+    :param check_exist:
+    :param odbc:
     :param test:
     :param reg_id: регистрационный номер принтера
     :param storage_id: регистрационный номер ФН
@@ -130,6 +133,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
                                   database=vl.db_ms, charset='utf8')
         cursor_ms = conn_ms.cursor()
+
+
 
     # ====================
     # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
@@ -454,8 +459,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
-    if test is False and send_to_sql is True:
-        if ind_oshift:
+    if send_to_sql is True:
+        if ind_oshift==2:
             print "\n copy open shifts to MSSQL"
             if check_exist:
                 cursor_ms.executemany("BEGIN "
@@ -476,7 +481,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "    VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)", open_shift)
 
         # ЗАКРЫТЫЕ СМЕНЫ
-        if ind_cshift:
+        if ind_cshift==2:
             print "copy closed shifts to MSSQL"
             if check_exist:
                 cursor_ms.executemany("BEGIN "
@@ -507,7 +512,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "            %s, %s, %s, %s, %s, %s, %s ", close_shift)
 
         # ЧЕКИ
-        if ind_receipt:
+        if ind_receipt==2:
             print "copy checks to MSSQL"
             if check_exist:
                 cursor_ms.executemany("BEGIN "
@@ -534,21 +539,41 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "    VALUES  (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, "
                                       "             %s, %s, %s, %s, %s, %s, %s)", receipt)
         # СОСТАВ ЧЕКА
+        if odbc:
+            server = vl.ip_mssql
+            database = 'iBase'
+            active_directory_domain = 'AMREST'
+            username = 'dos_data'
+            password = '##dos_data##'
+            cnxn = pyodbc.connect(
+                "DRIVER={SQL Server Native Client 11.0}" + ";SERVER={0};DATABASE={1};UID={2};PWD={3}"
+                .format(server, database, username, password))
+            # cnxn = pyodbc.connect(
+            #    "Driver=/usr/local/lib/libtdsodbc.so;Server=" + server
+            #    + ";UID=" + username
+            #    + ";PWD=" + password
+            #    + ";PORT=1433;DATABASE=" + database
+            #    + ";TDS_VERSION=8.0;")
+            cursor = cnxn.cursor()
+            cursor.execute("select top 10 * from ru_menu;")
+            for row in cursor.fetchall():
+                print row
+                None
         if ind_item:
             print "copy items to MSSQL"
             if check_exist:
-                cursor_ms.executemany("BEGIN "
+                cursor.executemany("BEGIN "
                                       "  IF NOT EXISTS "
-                                      "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=%s and "
-                                      "                                           fiscalDriveNumber=%s"
-                                      "                                         and kktRegId=%s and shiftNumber=%s and "
-                                      "                                           numid=%s)"
+                                      "    (SELECT 1 FROM RU_T_FISCAL_ITEMS WHERE fiscalDocumentNumber=? and "
+                                      "                                           fiscalDriveNumber=?"
+                                      "                                         and kktRegId=? and shiftNumber=? and "
+                                      "                                           numid=?)"
                                       "  BEGIN "
                                       "    INSERT INTO RU_T_FISCAL_ITEMS "
                                       "         (fiscalDocumentNumber, fiscalDriveNumber, kktRegId, shiftNumber, numid,"
                                       "             nds0, nds10, nds18, name, price, quantity, sum)  "
-                                      "    VALUES  (%s, %s, %s, %s, %s, "
-                                      "             %s, %s, %s, %s, %s, %s, %s)"
+                                      "    VALUES  (?, ?, ?, ?, ?, "
+                                      "             ?, ?, ?, ?, ?, ?, ?)"
                                       "  END "
                                       "END", items_e)
             else:
@@ -557,10 +582,13 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "             nds0, nds10, nds18, name, price, quantity, sum)  "
                                       "    VALUES  (%s, %s, %s, %s, %s, "
                                       "             %s, %s, %s, %s, %s, %s, %s)", items)
-        if ind_property:
+
+
+
+        if ind_property==2:
             print "copy properties to MSSQL"
             if check_exist:
-                cursor_ms.executemany("BEGIN "
+                cursor.execute("BEGIN "
                                       "  IF NOT EXISTS "
                                       "    (SELECT 1 FROM RU_T_FISCAL_PROPERTIES WHERE fiscalDocumentNumber=%s and "
                                       "                                           fiscalDriveNumber=%s"
@@ -580,7 +608,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "             keys, value)  "
                                       "    VALUES  (%s, %s, %s, %s, %s, %s, %s)", properties)
 
-        if ind_modifier:
+        if ind_modifier==2:
             print "copy modifiers to MSSQL"
             if check_exist:
                 cursor_ms.executemany("BEGIN "
@@ -604,8 +632,10 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "    VALUES  (%s, %s, %s, %s, %s, %s)", modifiers)
 
         print"\nCOMMITMENT"
-        conn_ms.commit()
-        conn_ms.close()
+#        conn_ms.commit()
+#       conn_ms.close()
+        cnxn.commit()
+        cnxn.close()
     print "Program is Finished."
 
 
