@@ -99,7 +99,7 @@ def main(day_frame=9):
                '<p><br><br>' \
                '<p>ЭТО АВТОМАТИЧЕСКАЯ РАССЫЛКА, ПРОСЬБА НЕ ОТВЕЧАТЬ НА ДАННОЕ ПИСЬМО.'
         header_email = 'attachment; filename="NoData.xls"'
-        m.main(file_path='C:\Users\\aleksey.yarkov\PycharmProjects\\amreports\OFD\OFD_DB\\noshifts.xls',
+        m.main(file_path='C:\Users\\aleksey.yarkov\PycharmProjects\\amreports\\amreports\OFD\OFD_DB\\noshifts.xls',
                report_name="KKT Does Not Send Data", text=text, header_email=header_email)
     else:
         print "no data to send"

@@ -8,7 +8,6 @@ import datetime
 import pymssql
 import validation as vl
 import sys
-import numpy as np
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -34,7 +33,7 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
     return response, response.cookies
 
 
-def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'):
+def list_checks(cooks, regid, storageid, datefrom, dateto, inn='7825335145'):
     """
 
     :param cooks: получаем после успешного подклчения к ОФД
@@ -44,7 +43,7 @@ def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'
         storageId	String, обязательный	Номер фискального накопителя	«9999999»
     :param datefrom:
         dateFrom	String, обязательный	Время начала периода запрашиваемых документов	«2016-10-19T12:20:45»
-        dateTo	String	Время окончания периода запрашиваемых документов. Если не указано, берётся текущее время	«2016-11-19T23:20:45»
+        dateTo	String	Время окончания периода запрашиваемых документов. Обязательный параметр	«2016-11-19T23:20:45»
     :param inn:
         inn	String, обязательный	ИНН организации-владельца ККТ	«1234567890»
     :return:
@@ -153,32 +152,25 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # определение даты начала сбора информации
     # ====================
     if date_to is not None:
-        todayx = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')
+        date_to = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S').isoformat()
     if date_from is None:
-        todayx = datetime.datetime.today()
-        day_check = todayx - datetime.timedelta(hours=hour_frame)
+        day_check = datetime.datetime.today() - datetime.timedelta(hours=hour_frame)
         date_from = day_check.isoformat()
-        date_to = todayx.isoformat()
-        print "Data from to check: ", date_from
-        print "Data to check: ", date_to
         day = datetime.datetime.today().date().isoformat()
         hour = datetime.datetime.today().hour
         minute = datetime.datetime.today().minute
     elif date_from is not None:
-        todayx = datetime.datetime.today()
-        day_check = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S')
-        date_from = day_check.isoformat()
-        print "Data from is set to: ", date_from
-        print "Data to check: ", date_to
+        date_from = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S').isoformat()
         day = datetime.datetime.today().date().isoformat()
         hour = datetime.datetime.today().hour
         minute = datetime.datetime.today().minute
+    if date_to is None:
+        date_to = datetime.datetime.today().isoformat()
     if (date_to is not None) and (date_to < date_from):
         print "Error datetime, date From: ", date_from, ", date_to: ", date_to
         sys.exit()
-    if date_to is None:
-        todayx = datetime.datetime.today()
-        date_to = todayx.isoformat()
+    print "Data from to check: ", date_from
+    print "Data to check: ", date_to
 
     # ======================
     # предварительное определение полей значений
@@ -197,7 +189,6 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                     'shiftNumber', 'user', 'userInn'])
     open_shift = pd.DataFrame()
     close_shift = pd.DataFrame()
-    #receipt = pd.DataFrame()
     items = pd.DataFrame()
     properties = pd.DataFrame()
     modifiers = pd.DataFrame()
@@ -211,25 +202,19 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         amount_of_kkt -= 1
         print "Регистрационный номер принтера и ФН ", k[0], k[1]
         data_check = 0
-        date_from = from_d
+        date_from = from_d  # испольуется для перебора временных промежутков, в связи с ограничение ОФД
         length = 0
         while data_check == 0:  # проверяем весь ли диапазон дат проверен
-            if date_to is None:
-                try:
-                    datat = pd.DataFrame((list_checks(cooks, k[0], k[1], date_from)))
-                except ValueError:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from), index=[0])
-            else:
-                try:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to))
-                except ValueError:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to), index=[0])
+            try:
+                datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to))
+            except ValueError:
+                datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to), index=[0])
             try:
                 rec = datat['receipt'].dropna()
                 df = pd.DataFrame(rec, index=[0])
                 data_check = 1
                 date = datetime.datetime.utcfromtimestamp(df['dateTime'])
-                if date < todayx:
+                if date < date_to:
                     data_check = 0
                     print "  собраны данные с ", date_from, " по ", date
                     print "    еще"
@@ -242,7 +227,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
             length += len(datat)
             # data = pd.concat([data, datat])
             data = datat
-        print from_d, "..", todayx, "всего документов", length
+        print from_d, "..", date_to, "всего документов", length
 
         if length != 0:  # проверка получили ли данные (оптимизация скорости)
             # ищем открытые смены
@@ -480,7 +465,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
     if test is False and send_to_sql is True:
         if ind_oshift:
-            print "\n copy open shifts to MSSQL"
+            print "\ncopy open shifts to MSSQL"
             if check_exist:
                 cursor_ms.executemany("BEGIN "
                                       "  IF NOT EXISTS "
