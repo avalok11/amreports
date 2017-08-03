@@ -8,7 +8,6 @@ import datetime
 import pymssql
 import validation as vl
 import sys
-import numpy as np
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -26,23 +25,24 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
                                               'login': login,
                                               'password': pwd}),
                              headers={'content-type': 'application/json; charset=utf-8'})
-    print "\nNew connection is established."
-    print response.status_code
-    print response.url
-    print response.cookies
-    print "--------------------------------"
+    print ("\nNew connection is established.")
+    print (response.status_code)
+    print (response.url)
+    print (response.cookies)
+    print ("--------------------------------")
     return response, response.cookies
 
 
-def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'):
+def list_checks(cooks, reg_id, storage_id, date_from, date_to, inn='7825335145'):
     """
 
+    :param date_to: дата до которой делать забор документо - Обязательный
     :param cooks: получаем после успешного подклчения к ОФД
-    :param regid:
+    :param reg_id:
         regId	String, обязательный	Регистрационный номер ККТ, выданный ФНС	«123»
-    :param storageid:
+    :param storage_id:
         storageId	String, обязательный	Номер фискального накопителя	«9999999»
-    :param datefrom:
+    :param date_from:
         dateFrom	String, обязательный	Время начала периода запрашиваемых документов	«2016-10-19T12:20:45»
         dateTo	String	Время окончания периода запрашиваемых документов. Если не указано, берётся текущее время	«2016-11-19T23:20:45»
     :param inn:
@@ -69,13 +69,13 @@ def list_checks(cooks, regid, storageid, datefrom, dateto=None, inn='7825335145'
             1069	message	сообщение оператору	Array[объект]	0..n
             1084	properties	дополнительный реквизит	Array[объект]	0..n
     """
-    if dateto is None:
-        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
-                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&limit=1000',
+    if date_to is None:
+        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(reg_id) + '/storages/'
+                                + str(storage_id) + '/docs?dateFrom=' + str(date_from) + '&limit=1000',
                                 cookies=cooks)  # + '&limit=1000'
     else:
-        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(regid) + '/storages/'
-                                + str(storageid) + '/docs?dateFrom=' + str(datefrom) + '&dateTo=' + str(dateto) +
+        response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(reg_id) + '/storages/'
+                                + str(storage_id) + '/docs?dateFrom=' + str(date_from) + '&dateTo=' + str(date_to) +
                                 '&limit=1000', cookies=cooks)
     return response.json()
 
@@ -109,20 +109,25 @@ def reg_drive(cursor_ms):
     cursor_ms.execute("SELECT regId, storageId FROM RU_T_FISCAL_DRIVE WHERE status=2;")
     return cursor_ms.fetchall()
 
+def drive_time(cursor_ms, fiscal_drive, kkt_reg_id):
+    cursor_ms.execute("SELECT TOP 1 dateTime "
+                      "FROM RU_T_FISCAL_RECEIPT  "
+                      "WHERE fiscalDriveNumber=%s AND kktRegId=%s "
+                      "ORDER BY dateTime DESC;", (fiscal_drive, kkt_reg_id))
+    return cursor_ms.fetchone()
 
-def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, hour_frame=2, send_to_sql=True,
-         check_exist=True, file_path='logs\\', bulk_insert=False):
+
+def collect_data(db_read_write=True,
+                 reg_id=None, storage_id=None,
+                 date_from=None, date_to=None,
+                 file_path='logs\\'):
     """
-    :param send_to_sql:
-    :param bulk_insert:
-    :param file_path:
-    :param check_exist:
-    :param test:
+    :param file_path: путь куда сораняем логи
+    :param db_read_write: работаем или нет с базой данных
     :param reg_id: регистрационный номер принтера
     :param storage_id: регистрационный номер ФН
     :param date_from: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
     :param date_to: по какую дату хоти забирать данные
-    :param hour_frame: какой сдвиг назад часов, используется по умолчанию
     :return:
     """
 
@@ -130,7 +135,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ПОДКЛЮЧНИЕ БАЗЫ PL
     # ===========================
     # make a connection to MSSQL iBase RU server
-    if test is False:
+    if db_read_write:
         conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
                                   database=vl.db_ms, charset='utf8')
         cursor_ms = conn_ms.cursor()
@@ -139,51 +144,53 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
     # ====================
     if reg_id is None or storage_id is None:
-        if test is False:
-            id = reg_drive(cursor_ms)
-        else:
-            reg_id = '0000083853048447'  # для тестирования
-            storage_id = '8710000100099930'  # для тестирования
-            id = ((reg_id, storage_id),)
+        id_fn = reg_drive(cursor_ms)  # списко ФН
     else:
-        id = ((reg_id, storage_id),)
-
-    print "Всего принтеров и фискальных накопителей", len(id)
+        id_fn = ((reg_id, storage_id),)  # списко ФН
+    print 'Всего принтеров и фискальных накопителей', len(id_fn)
+    print id_fn
 
     # ====================
-    # определение даты начала сбора информации
+    # определение диапазона дат сбора информации date_from till date_to
     # ====================
+    id_fn_time = list()  # списко ФН и времени последнего чека (момент с которого надо опрашивать принтер)
     if date_to is not None:
-        todayx = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')
+        today_x = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')  # используется для проверки диапзаона забора данных из ОФД
+        date_to = today_x.isoformat()
+    else:
+        today_x = datetime.datetime.today()
+        date_to = today_x.isoformat()
     if date_from is None:
-        todayx = datetime.datetime.today()
-        day_check = todayx - datetime.timedelta(hours=hour_frame)
-        date_from = day_check.isoformat()
-        date_to = todayx.isoformat()
-        print "Data from to check: ", date_from
-        print "Data to check: ", date_to
-        day = datetime.datetime.today().date().isoformat()
-        hour = datetime.datetime.today().hour
-        minute = datetime.datetime.today().minute
-    elif date_from is not None:
-        todayx = datetime.datetime.today()
-        day_check = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S')
-        date_from = day_check.isoformat()
-        print "Data from is set to: ", date_from
-        print "Data to check: ", date_to
-        day = datetime.datetime.today().date().isoformat()
-        hour = datetime.datetime.today().hour
-        minute = datetime.datetime.today().minute
+        for reg_id, storage_id in id_fn:
+            if db_read_write:
+                time = drive_time(cursor_ms, storage_id, reg_id)
+                if time is None:
+                    time = (datetime.datetime.today() - datetime.timedelta(hours=48)).isoformat()
+                    id_fn_time.append((reg_id, storage_id, time))
+                    None
+                else:
+                    time = datetime.datetime.strftime(time[0], '%Y-%m-%dT%H:%M:%S')
+                    id_fn_time.append((reg_id, storage_id, time))
+                    None
+            else:
+                time = (datetime.datetime.today() - datetime.timedelta(hours=152)).isoformat()
+                id_fn_time.append((reg_id, storage_id, time))
+
+    else:
+        date_from = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S').isoformat()
+        for reg_id, storage_id in id_fn:
+            id_fn_time.append(reg_id, storage_id, date_from)
     if (date_to is not None) and (date_to < date_from):
-        print "Error datetime, date From: ", date_from, ", date_to: ", date_to
+        print("Error datetime, date From: ", date_from, ", date_to: ", date_to)
         sys.exit()
-    if date_to is None:
-        todayx = datetime.datetime.today()
-        date_to = todayx.isoformat()
+    day = datetime.datetime.today().date().isoformat()
+    hour = datetime.datetime.today().hour
+    minute = datetime.datetime.today().minute
 
     # ======================
     # предварительное определение полей значений
     # ======================
+    """
     open_shift = pd.DataFrame(columns=['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
                                        'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn'])
     close_shift = pd.DataFrame(columns=['code', 'dateTime', 'documentsQuantity', 'fiscalDocumentNumber',
@@ -192,58 +199,60 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                         'notTransmittedDocumentsDateTime', 'notTransmittedDocumentsQuantity',
                                         'ofdResponseTimeoutSign', 'operator', 'rawData', 'receiptsQuantity',
                                         'shiftNumber', 'userInn'])
+    """
     receipt = pd.DataFrame(columns=['cashTotalSum', 'dateTime', 'ecashTotalSum', 'fiscalDocumentNumber',
                                     'fiscalDriveNumber', 'fiscalSign', 'kktRegId', 'nds0', 'nds10', 'nds18',
                                     'operationType', 'operator', 'receiptCode', 'requestNumber',
                                     'shiftNumber', 'user', 'userInn'])
     open_shift = pd.DataFrame()
     close_shift = pd.DataFrame()
-    #receipt = pd.DataFrame()
+    # receipt = pd.DataFrame()
     items = pd.DataFrame()
     properties = pd.DataFrame()
     modifiers = pd.DataFrame()
     data = pd.DataFrame()
 
-    from_d = date_from
-    amount_of_kkt = len(id)
+    amount_of_kkt = len(id_fn_time)
     connection, cooks = connect()
-    for k in id:
+    for printer in id_fn_time:
         print "Осталось проверить кол-во принтеров: ", amount_of_kkt
         amount_of_kkt -= 1
-        print "Регистрационный номер принтера и ФН ", k[0], k[1]
+        print "Регистрационный номер принтера и ФН ", printer[0], printer[1]
         data_check = 0
-        date_from = from_d
+        from_d = printer[2]
+        date_from = printer[2]
         length = 0
         while data_check == 0:  # проверяем весь ли диапазон дат проверен
-            if date_to is None:
-                try:
-                    datat = pd.DataFrame((list_checks(cooks, k[0], k[1], date_from)))
-                except ValueError:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from), index=[0])
-            else:
-                try:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to))
-                except ValueError:
-                    datat = pd.DataFrame(list_checks(cooks, k[0], k[1], date_from, date_to), index=[0])
+            data_t = list_checks(cooks, printer[0], printer[1], date_from, date_to)
             try:
-                rec = datat['receipt'].dropna()
-                df = pd.DataFrame(rec, index=[0])
+                data_t = pd.DataFrame(data_t)
+            except ValueError:
+                data_t = pd.DataFrame(data_t, index=[0])
+            try:
+                last_row = data_t.iloc[-1]  # выбираем последнее найденное значение, если его нет то значит все данные собрали
+                if last_row['receipt'] == last_row['receipt']:
+                    rec = last_row['receipt']
+                    print rec
+                elif last_row['closeShift'] == last_row['closeShift']:
+                    rec = last_row['closeShift']
+                elif last_row['openShift'] == last_row['openShift']:
+                    rec = last_row['openShift']
+                #rec = data_t['receipt'].dropna().tolist()
                 data_check = 1
-                date = datetime.datetime.utcfromtimestamp(df['dateTime'])
-                if date < todayx:
+                date = datetime.datetime.utcfromtimestamp(rec['dateTime'])
+                if date < today_x:
                     data_check = 0
                     print "  собраны данные с ", date_from, " по ", date
-                    print "    еще"
-                    date_from = date.isoformat()
+                    date_from = (date + datetime.timedelta(minutes = 1)).isoformat()
                 else:
                     print "  достигли финальной даты"
-            except KeyError:
+            except IndexError:
                 data_check = 1
                 print "  Больше нет данных."
-            length += len(datat)
-            # data = pd.concat([data, datat])
-            data = datat
-        print from_d, "..", todayx, "всего документов", length
+            length += len(data_t)
+            data = pd.concat([data, data_t])
+            #data = data_t
+        print from_d, "..", today_x, "всего документов", length
 
         if length != 0:  # проверка получили ли данные (оптимизация скорости)
             # ищем открытые смены
@@ -352,8 +361,8 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         open_shift = open_shift[['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
                                  'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn']]
         open_shift.drop('rawData', axis=1, inplace=True)
-        outfile = 'openshift_' + str(day) + '_' + str(hour) + str(minute) + '.csv'
-        outfilex = open('openshift.txt', 'wb')
+        outfile = file_path + 'openshift_' + str(day) + '_' + str(hour) + str(minute) + '.csv'
+        outfilex = open(file_path + 'openshift.txt', 'wb')
         open_shift.to_csv(outfile, sep=';', encoding='utf-8')
         open_shift.to_csv(outfilex, sep=';', encoding='windows-1251',
                           header=False, index=False)
@@ -479,7 +488,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
     # ===========================
 
     # ДОБАВЛЯЕМ ОТКРЫТЫЕ СМЕНЫ
-    if test is False and send_to_sql is True:
+    if db_read_write is True and db_write is True:
         if ind_oshift:
             print "\n copy open shifts to MSSQL"
             if check_exist and bulk_insert is False:
@@ -652,7 +661,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                   "   )")
 
         if ind_modifier:
-            print "copy modifiers to MSSQL"
+            print("copy modifiers to MSSQL")
             if check_exist:
                 cursor_ms.executemany("BEGIN "
                                       "  IF NOT EXISTS "
@@ -674,11 +683,11 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
                                       "             discountsum)  "
                                       "    VALUES  (%s, %s, %s, %s, %s, %s)", modifiers)
 
-        print"\nCOMMITMENT"
+        print("\nCOMMITMENT")
         conn_ms.commit()
         conn_ms.close()
-    print "Program is Finished."
+    print("Program is Finished.")
 
 
 if __name__ == "__main__":
-    main()
+    collect_data()

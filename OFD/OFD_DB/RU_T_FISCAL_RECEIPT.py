@@ -351,7 +351,7 @@ def main(test=True, reg_id=None, storage_id=None, date_from=None, date_to=None, 
         open_shift = open_shift[['code', 'dateTime', 'fiscalDocumentNumber', 'fiscalDriveNumber', 'fiscalSign',
                                  'kktRegId', 'operator', 'rawData', 'shiftNumber', 'userInn']]
         open_shift.drop('rawData', axis=1, inplace=True)
-        outfile = 'openshift_' + str(day) + '_' + str(hour) + str(minute) + '.csv'
+        outfile = file_path + 'openshift_' + str(day) + '_' + str(hour) + str(minute) + '.csv'
         outfilex = open('openshift.txt', 'wb')
         open_shift.to_csv(outfile, sep=';', encoding='utf-8')
         open_shift.to_csv(outfilex, sep=';', encoding='windows-1251',
