@@ -4,7 +4,7 @@
 ip_mssql = '192.168.161.18'
 
 usr_ms = 'AMREST\\aleksey.yarkov'
-pwd_ms = 'gr03ee08ka&x*'
+pwd_ms = 'gr03ee08KA&x*'
 
 db_ms = 'DataWarehouse'
 
