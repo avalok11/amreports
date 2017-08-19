@@ -8,7 +8,6 @@ import datetime
 import pymssql
 import validation as vl
 import sys
-from multiprocessing.pool import ThreadPool
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -120,7 +119,77 @@ def drive_time(cursor_ms, fiscal_drive, kkt_reg_id):
     return cursor_ms.fetchone()
 
 
-def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
+def main(db_read_write=True,
+         reg_id=None, storage_id=None,
+         date_from=None, date_to=None,
+         file_path='logs\\'):
+    """
+    :param file_path: путь куда сораняем логи
+    :param db_read_write: работаем или нет с базой данных
+    :param reg_id: регистрационный номер принтера
+    :param storage_id: регистрационный номер ФН
+    :param date_from: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
+    :param date_to: по какую дату хоти забирать данные
+    :return:
+    """
+
+    # ===========================
+    # ПОДКЛЮЧНИЕ БАЗЫ PL
+    # ===========================
+    # make a connection to MSSQL iBase RU server
+    cursor_ms = False
+    if db_read_write:
+        conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
+                                  database=vl.db_ms, charset='utf8')
+        cursor_ms = conn_ms.cursor()
+
+    # ====================
+    # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
+    # ====================
+    if reg_id is None or storage_id is None and db_read_write is True:
+        id_fn = reg_drive(cursor_ms)  # списко ФН
+    else:
+        id_fn = ((reg_id, storage_id),)  # списко ФН
+        # id_fn = (('0001104870020004', '8710000100840306'), ('0000734403026836', '8710000100978624'))  # списко ФН
+    print 'Всего принтеров и фискальных накопителей', len(id_fn)
+
+    # ====================
+    # определение диапазона дат сбора информации date_from till date_to
+    # ====================
+    id_fn_time = list()  # списко ФН и времени последнего чека (момент с которого надо опрашивать принтер)
+    if date_to is not None:
+        today_x = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')  # используется для проверки диапазона дат
+        date_to = today_x.isoformat()
+        date_is_fixed = 1
+    else:
+        today_x = datetime.datetime.today()
+        date_is_fixed = 0
+        date_to = datetime.datetime.today().isoformat()
+    if date_from is None:
+        for reg_id, storage_id in id_fn:
+            if db_read_write:
+                time = drive_time(cursor_ms, storage_id, reg_id)
+                if time is None:
+                    time = (datetime.datetime.today() - datetime.timedelta(hours=48)).isoformat()
+                    id_fn_time.append((reg_id, storage_id, time))
+                else:
+                    time = datetime.datetime.strftime(time[0], '%Y-%m-%dT%H:%M:%S')
+                    id_fn_time.append((reg_id, storage_id, time))
+            else:
+                time = (datetime.datetime.today() - datetime.timedelta(hours=152)).isoformat()
+                id_fn_time.append((reg_id, storage_id, time))
+
+    else:
+        date_from = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S').isoformat()
+        for reg_id, storage_id in id_fn:
+            id_fn_time.append((reg_id, storage_id, date_from))
+    if (date_to is not None) and (date_to < date_from):
+        print("Error datetime, date From: ", date_from, ", date_to: ", date_to)
+        sys.exit()
+    day = datetime.datetime.today().date().isoformat()
+    hour = datetime.datetime.today().hour
+    minute = datetime.datetime.today().minute
+
     # ======================
     # предварительное определение полей значений
     # ======================
@@ -145,8 +214,9 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
     properties = pd.DataFrame()
     modifiers = pd.DataFrame()
     # data = pd.DataFrame()
-    global amount_of_kkt
-    connection, cooks = connect()  # установка соединения!
+
+    amount_of_kkt = len(id_fn_time)
+    connection, cooks = connect()
     for printer in id_fn_time:
         data = pd.DataFrame()
         print "\nОсталось проверить кол-во принтеров: ", amount_of_kkt
@@ -177,7 +247,7 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
             else:
                 date_to_x = date_to
                 print " собираю данные из диапазона", date_from, " до ", date_to
-            data_t = list_checks(cooks, printer[0], printer[1], date_from, date_to_x)  #запрос в ОФД!
+            data_t = list_checks(cooks, printer[0], printer[1], date_from, date_to_x)
             try:
                 data_t = pd.DataFrame(data_t)
             except ValueError:
@@ -238,23 +308,14 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
             # ищем чеки и их содержимое
             try:
                 t_r = datetime.datetime.today()
-                # print "ITEMS=="
-                # print "  0 start", datetime.datetime.today()
                 receipt_tmp = pd.DataFrame(data['receipt'].dropna().tolist())
-                # print len(receipt_tmp)
-                # print "  1 got receipts", datetime.datetime.today()
                 receipt_tmp['dateTime'] = receipt_tmp['dateTime'].apply(lambda x: datetime.datetime.utcfromtimestamp(x))
-                # print "  2 datetime formated", datetime.datetime.today()
                 receipt_tmp = nds_check(receipt_tmp)
-                # print "  3 nds formated", datetime.datetime.today()
                 receipt_tmp.drop('rawData', axis=1, inplace=True)
                 # содержимое чека - items
                 try:
                     items_tmp = receipt_tmp['items'].dropna().tolist()
-                    # print "  4 got items", datetime.datetime.today()
-                    # print len(items_tmp)
                     count = 0
-                    items_pre = pd.DataFrame()
                     for i in items_tmp:
                         dataf = pd.DataFrame(i)
                         dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
@@ -262,20 +323,15 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                         dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp.iloc[count]['fiscalDocumentNumber']
                         dataf['numid'] = dataf.index.values
-                        items_pre = pd.concat([items_pre, dataf])
+                        items = pd.concat([items, dataf])
                         count += 1
-                    items = pd.concat([items, items_pre])
-                    # print "  5 merge receipts data to items", datetime.datetime.today()
                     items = nds_check(items)
-                    # print "  6 nds formated", datetime.datetime.today()
                 except KeyError:
                     None
                 # properties
                 try:
                     count = 0
                     properties_tmp = receipt_tmp['properties'].dropna().tolist()
-                    # print "  7 gor properties", datetime.datetime.today()
-                    properties_pre = pd.DataFrame()
                     for i in properties_tmp:
                         dataf = pd.DataFrame(i)
                         dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
@@ -283,18 +339,14 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                         dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp.iloc[count]['fiscalDocumentNumber']
                         dataf['numid'] = dataf.index.values
-                        properties_pre = pd.concat([properties_pre, dataf])
+                        properties = pd.concat([properties, dataf])
                         count += 1
-                    properties = pd.concat([properties, properties_pre])
-                    # print "  8 merge receipts data to properties", datetime.datetime.today()
                 except KeyError:
                     None
                 # modifiers
                 try:
                     count = 0
                     modifiers_tmp = receipt_tmp['modifiers'].dropna().tolist()
-                    # print "  9 got modifiers", datetime.datetime.today()
-                    modifiers_pre = pd.DataFrame()
                     for i in modifiers_tmp:
                         dataf = pd.DataFrame(i)
                         dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
@@ -302,14 +354,11 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                         dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
                         dataf['fiscalDocumentNumber'] = receipt_tmp.iloc[count]['fiscalDocumentNumber']
                         dataf['numid'] = dataf.index.values
-                        modifiers_pre = pd.concat([modifiers_pre, dataf])
+                        modifiers = pd.concat([modifiers, dataf])
                         count += 1
-                    modifiers = pd.concat([modifiers, modifiers_pre])
-                    # print "  10 merge receipts data to modifiers", datetime.datetime.today()
                 except KeyError:
                     None
                 receipt = pd.concat([receipt, receipt_tmp])
-                # print "  11 merge receipts data to receipts", datetime.datetime.today()
                 t_rf = datetime.datetime.today()
                 print " 3. work on receipts, total: ", len(receipt_tmp), "time: ", t_rf - t_r
             except KeyError:
@@ -329,191 +378,6 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
             print "Connection closed:", datetime.datetime.today()
     connection.close()
     print "\nGetting data from OFD is finished."
-    return open_shift, closed_shift, receipt, items, properties, modifiers
-
-
-def main(db_read_write=True,
-         reg_id=None, storage_id=None,
-         date_from=None, date_to=None,
-         file_path='logs\\'):
-    """
-    :type db_read_write: работаем или нет с базой данных
-    :type file_path: путь куда сораняем логи
-    :type reg_id: регистрационный номер принтера
-    :type storage_id: регистрационный номер ФН
-    :type date_from: с какой даты мы хотим начать забирать данные формат пример - 2017-06-18T00:00:00
-    :type date_to: по какую дату хоти забирать данные
-    :return:
-    """
-
-    # ===========================
-    # ПОДКЛЮЧНИЕ БАЗЫ PL
-    # ===========================
-    # make a connection to MSSQL iBase RU server
-    cursor_ms = False
-    if db_read_write:
-        conn_ms = pymssql.connect(host=vl.ip_mssql, user=vl.usr_ms, password=vl.pwd_ms,
-                                  database=vl.db_ms, charset='utf8')
-        cursor_ms = conn_ms.cursor()
-
-    # ====================
-    # ПОЛУЧЕНИЕ СПИСКА ФИСКАЛЬНЫЙ НАКОПИТЕЛЕЙ
-    # ====================
-    if (reg_id is None or storage_id is None) and db_read_write is True:
-        id_fn = reg_drive(cursor_ms)  # списко ФН
-    else:
-        id_fn = ((reg_id, storage_id),)  # списко ФН
-        # id_fn = (('0000546299024021', '8710000100610203'), ('0000909506007263', '8710000100837463'),
-        #         ('0000326764018245', '8710000100435361'), ('0000570631019466', '8710000100512301'),
-        #         ('0000570300003541', '8710000100512052'), ('0000192250002480', '8710000100082802'))  # списко ФН
-    print 'Всего принтеров и фискальных накопителей', len(id_fn)
-
-    # ====================
-    # определение диапазона дат сбора информации date_from till date_to
-    # ====================
-    id_fn_time = list()  # списко ФН и времени последнего чека (момент с которого надо опрашивать принтер)
-    if date_to is not None:
-        today_x = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')  # используется для проверки диапазона дат
-        date_to = today_x.isoformat()
-        date_is_fixed = 1
-    else:
-        today_x = datetime.datetime.today()
-        date_is_fixed = 0
-        date_to = datetime.datetime.today().isoformat()
-    if date_from is None:
-        for reg_id, storage_id in id_fn:
-            if db_read_write:
-                time = drive_time(cursor_ms, storage_id, reg_id)
-                if time is None:
-                    time = (datetime.datetime.today() - datetime.timedelta(hours=48)).isoformat()
-                    id_fn_time.append((reg_id, storage_id, time))
-                else:
-                    time = datetime.datetime.strftime(time[0], '%Y-%m-%dT%H:%M:%S')
-                    id_fn_time.append((reg_id, storage_id, time))
-            else:
-                time = (datetime.datetime.today() - datetime.timedelta(hours=152)).isoformat()
-                id_fn_time.append((reg_id, storage_id, time))
-
-    else:
-        date_from = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S').isoformat()
-        for reg_id, storage_id in id_fn:
-            id_fn_time.append((reg_id, storage_id, date_from))
-    if (date_to is not None) and (date_to < date_from):
-        print("Error datetime, date From: ", date_from, ", date_to: ", date_to)
-        sys.exit()
-    day = datetime.datetime.today().date().isoformat()
-    hour = datetime.datetime.today().hour
-    minute = datetime.datetime.today().minute
-
-    # ======================
-    # мультипоточность, хотим 10 поток
-    # ======================
-    # определяем кол-во принтеров
-    global amount_of_kkt
-    amount_of_kkt = len(id_fn_time)
-    threads = 4
-    if threads > amount_of_kkt:
-        # ======================
-        # запрос в ОФД
-        # ======================
-        open_shift, closed_shift, receipt, items, properties, modifiers = \
-            get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x)
-    else:
-        amount_printers = len(id_fn_time)/threads
-        pool1 = ThreadPool(processes=1)
-        pool2 = ThreadPool(processes=2)
-        pool3 = ThreadPool(processes=3)
-        pool4 = ThreadPool(processes=4)
-        #pool5 = ThreadPool(processes=5)
-        #pool6 = ThreadPool(processes=6)
-        #pool7 = ThreadPool(processes=7)
-        #pool8 = ThreadPool(processes=8)
-        #pool9 = ThreadPool(processes=9)
-        #pool10 = ThreadPool(processes=10)
-        async_result1 = pool1.apply_async(get_data_from_ofd, (id_fn_time[:amount_printers],
-                                                              date_is_fixed, date_to, today_x))
-        async_result2 = pool2.apply_async(get_data_from_ofd, (id_fn_time[amount_printers:2*amount_printers],
-                                                              date_is_fixed, date_to, today_x))
-        async_result3 = pool3.apply_async(get_data_from_ofd, (id_fn_time[2*amount_printers:3*amount_printers],
-                                                              date_is_fixed, date_to, today_x))
-        async_result4 = pool4.apply_async(get_data_from_ofd, (id_fn_time[3*amount_printers:4*amount_printers],
-                                                              date_is_fixed, date_to, today_x))
-        #async_result5 = pool5.apply_async(get_data_from_ofd, (id_fn_time[4*amount_printers:5*amount_printers],
-        #                                                      date_is_fixed, date_to, today_x))
-        #async_result6 = pool6.apply_async(get_data_from_ofd, (id_fn_time[5*amount_printers:6*amount_printers],
-        #                                                      date_is_fixed, date_to, today_x))
-        #async_result7 = pool7.apply_async(get_data_from_ofd, (id_fn_time[6*amount_printers:7*amount_printers],
-        #                                                      date_is_fixed, date_to, today_x))
-        #async_result8 = pool8.apply_async(get_data_from_ofd, (id_fn_time[7*amount_printers:8*amount_printers],
-        #                                                      date_is_fixed, date_to, today_x))
-        #async_result9 = pool9.apply_async(get_data_from_ofd, (id_fn_time[8*amount_printers:9*amount_printers],
-        #                                                      date_is_fixed, date_to, today_x))
-        #async_result10 = pool10.apply_async(get_data_from_ofd, (id_fn_time[9*amount_printers:10*amount_printers],
-        #                                                        date_is_fixed, date_to, today_x))
-        # get the results
-        pool1.close() #'это кажется работает!'
-        pool1.join()
-        open_shift1, closed_shift1, receipt1, items1, properties1, modifiers1 = async_result1.get()
-        pool2.close()
-        pool2.join()
-        open_shift2, closed_shift2, receipt2, items2, properties2, modifiers2 = async_result2.get()
-        pool3.close()
-        pool3.join()
-        open_shift3, closed_shift3, receipt3, items3, properties3, modifiers3 = async_result3.get()
-        pool4.close()
-        pool4.join()
-        open_shift4, closed_shift4, receipt4, items4, properties4, modifiers4 = async_result4.get()
-        #open_shift5, closed_shift5, receipt5, items5, properties5, modifiers5 = async_result5.get()
-        #open_shift6, closed_shift6, receipt6, items6, properties6, modifiers6 = async_result6.get()
-        #open_shift7, closed_shift7, receipt7, items7, properties7, modifiers7 = async_result7.get()
-        #open_shift8, closed_shift8, receipt8, items8, properties8, modifiers8 = async_result8.get()
-        #open_shift9, closed_shift9, receipt9, items9, properties9, modifiers9 = async_result9.get()
-        #open_shift10, closed_shift10, receipt10, items10, properties10, modifiers10 = async_result10.get()
-
-        open_shift = [open_shift1, open_shift2, open_shift3, open_shift4]
-        open_shift = pd.concat(open_shift)
-        closed_shift = [closed_shift1, closed_shift2, closed_shift3, closed_shift4]
-        closed_shift = pd.concat(closed_shift)
-        receipt = [receipt1, receipt2, receipt3, receipt4]
-        receipt = pd.concat(receipt)
-        items = [items1, items2, items3, items4]
-        items = pd.concat(items)
-        properties = [properties1, properties2, properties3, properties4]
-        properties = pd.concat(properties)
-        modifiers = [modifiers1, modifiers2, modifiers3, modifiers4]
-        modifiers = pd.concat(modifiers)
-
-        #open_shift = [open_shift1, open_shift2, open_shift3, open_shift4, open_shift5, open_shift6, open_shift7,
-        #               open_shift8, open_shift9]
-        #open_shift = pd.concat(open_shift)
-        #closed_shift = [closed_shift1, closed_shift2, closed_shift3, closed_shift4, closed_shift5, closed_shift6,
-        #                closed_shift7, closed_shift8, closed_shift9, closed_shift10]
-        #closed_shift = pd.concat(closed_shift)
-        #receipt = [receipt1, receipt2, receipt3, receipt4, receipt5, receipt6, receipt7, receipt8, receipt9, receipt10]
-        #receipt = pd.concat(receipt)
-        #items = [items1, items2, items3, items4, items5, items6, items7, items8, items9, items10]
-        #items = pd.concat(items)
-        #properties = [properties1, properties2, properties3, properties4, properties5, properties6, properties7,
-        #              properties8, properties9, properties10]
-        #properties = pd.concat(properties)
-        #modifiers = [modifiers1, modifiers2, modifiers3, modifiers4, modifiers5, modifiers6, modifiers7, modifiers8,
-        #             modifiers9, modifiers10]
-        #modifiers = pd.concat(modifiers)
-
-        if len(id_fn_time)%threads != 0:
-            print "\n\n ===\nSTART FINAL THREAD\n=== \n\n"
-            pool11 = ThreadPool(processes=11)
-            async_result11 = pool11.apply_async(get_data_from_ofd, (id_fn_time[10*amount_printers:],
-                                                                   date_is_fixed, date_to, today_x))
-            pool11.close()
-            pool11.join()
-            open_shift11, closed_shift11, receipt11, items11, properties11, modifiers11 = async_result11.get()
-            open_shift = pd.concat([open_shift, open_shift11])
-            closed_shift = pd.concat([closed_shift, closed_shift11])
-            receipt = pd.concat([receipt, receipt11])
-            items = pd.concat([items, items11])
-            properties = pd.concat([properties, properties11])
-            modifiers = pd.concat([modifiers, modifiers11])
 
     # ===========================
     # ПОДГОТОВКА ДАННЫХ ОБ ОТКРЫТИИ СМЕН
@@ -568,6 +432,7 @@ def main(db_read_write=True,
         receipt['ecashTotalSum'] /= 100
         receipt['receiptCode'] = receipt['receiptCode'].apply(lambda x: int(x))
         receipt['fiscalSign'] = receipt['fiscalSign'].apply(lambda x: str(x))
+        receipt['shiftNumber'] = receipt['shiftNumber'].apply(lambda x: str(x))
         receipt['shiftNumber'] = receipt['shiftNumber'].apply(lambda x: int(x))
         receipt['fiscalDocumentNumber'] = receipt['fiscalDocumentNumber'].apply(lambda x: int(x))
         receipt['operationType'] = receipt['operationType'].apply(lambda x: int(x))
