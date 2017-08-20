@@ -8,7 +8,7 @@ import xlwt
 import mail_send as m
 
 
-def main(day_frame=9):
+def main(day_frame=18):
     # ===========================
     # ОПРЕДЕЛИТЬ ПОЗАВЧЕРАШНИЙ ДЕНЬ
     # ===========================
@@ -95,7 +95,7 @@ def main(day_frame=9):
 
         book.save("noshifts.xls")
         print "send email"
-        text = '<p>Во вложении список принтеров от которых нет данных в ОФД более чем 2 суток.' \
+        text = '<p>Во вложении список принтеров от которых нет данных в ОФД более чем 18 суток.' \
                '<p><br><br>' \
                '<p>ЭТО АВТОМАТИЧЕСКАЯ РАССЫЛКА, ПРОСЬБА НЕ ОТВЕЧАТЬ НА ДАННОЕ ПИСЬМО.'
         header_email = 'attachment; filename="NoData.xls"'
