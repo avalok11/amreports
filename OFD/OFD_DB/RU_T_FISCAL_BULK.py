@@ -9,6 +9,7 @@ import pymssql
 import validation as vl
 import sys
 from multiprocessing.pool import ThreadPool
+import ast
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -21,17 +22,19 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
             sid	    String, обязательный	Идентификатор сессии
             token	String, необязательный	Не используется
     """
+    payload = {'app_client_id': idd, 'login': login, 'password': pwd}
     response = requests.post('https://api.sbis.ru/oauth/service/',
-                             data=json.dumps({'app_client_id': idd,
-                                              'login': login,
-                                              'password': pwd}),
-                             headers={'content-type': 'application/json; charset=utf-8'})
-    print ("\nNew connection is established.")
-    print (response.status_code)
-    print (response.url)
-    print (response.cookies)
-    print ("--------------------------------")
-    return response, response.cookies
+                             json=payload)
+                             #data=json.dumps(payload),
+                             #headers={'content-type': 'application/json; charset=utf-8'})
+    print "\nNew connection is established."
+    print response.status_code
+    print response.url
+    print response.content
+    #sid = ast.literal_eval(response.content)['sid']
+    cooks = dict(sid=ast.literal_eval(response.content)['sid'])
+    print "--------------------------------"
+    return response, cooks
 
 
 def list_checks(cooks, reg_id, storage_id, date_from, date_to, inn='7825335145'):
@@ -79,6 +82,8 @@ def list_checks(cooks, reg_id, storage_id, date_from, date_to, inn='7825335145')
         response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts/' + str(reg_id) + '/storages/'
                                 + str(storage_id) + '/docs?dateFrom=' + str(date_from) + '&dateTo=' + str(date_to) +
                                 '&limit=1000', cookies=cooks)
+    print response
+    None
     return response.json()
 
 
@@ -277,7 +282,10 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                     # print "  7 gor properties", datetime.datetime.today()
                     properties_pre = pd.DataFrame()
                     for i in properties_tmp:
-                        dataf = pd.DataFrame(i)
+                        try:
+                            dataf = pd.DataFrame(i)
+                        except ValueError:
+                            dataf = pd.DataFrame(i, index=[0])
                         dataf['fiscalDriveNumber'] = receipt_tmp.iloc[count]['fiscalDriveNumber']
                         dataf['kktRegId'] = receipt_tmp.iloc[count]['kktRegId']
                         dataf['shiftNumber'] = receipt_tmp.iloc[count]['shiftNumber']
@@ -675,10 +683,10 @@ def main(db_read_write=True,
             cursor_ms.execute("INSERT INTO RU_T_FISCAL_FLAG "
                               "  (datetime, file_name, type_file, indicator) "
                               "  VALUES (%s, %s, %s, %d);", data)
-        print("\nCOMMITMENT")
+        print "\nCOMMITMENT"
         conn_ms.commit()
         conn_ms.close()
-    print("Program is Finished.")
+    print "Program is Finished."
 
 
 if __name__ == "__main__":

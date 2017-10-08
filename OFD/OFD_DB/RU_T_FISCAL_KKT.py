@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 import pymssql
 import validation as vl
+import ast
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -24,7 +25,9 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
                                               'login': login,
                                               'password': pwd}),
                              headers={'content-type': 'application/json; charset=utf-8'})
-    return response, response.cookies
+
+    cooks = dict(sid=ast.literal_eval(response.content)['sid'])
+    return response, cooks
 
 
 def list_kkt(cooks, inn='7825335145', status=2):
@@ -48,6 +51,7 @@ def list_kkt(cooks, inn='7825335145', status=2):
     #response = requests.get('https://api.sbis.ru/ofd/v1/orgs/'+str(inn)+'/kkts?status='+str(status), cookies=cooks)
     response = requests.get('https://api.sbis.ru/ofd/v1/orgs/' + str(inn) + '/kkts',
                             cookies=cooks)
+    print response
     return response.json()
 
 
