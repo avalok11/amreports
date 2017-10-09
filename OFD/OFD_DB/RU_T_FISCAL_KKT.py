@@ -73,7 +73,7 @@ def main():
     print kkts
 
     kkt_list = pd.DataFrame(kkts)
-    kkt_list = kkt_list[['address', 'factoryId', 'model', 'regId', 'status']]
+    kkt_list = kkt_list[['address', 'factoryId', 'kpp', 'model', 'regId', 'status']]
     kkt_list.to_csv("C:\Users\\aleksey.yarkov\PycharmProjects\\amreports\OFD\OFD_DB\\FN.csv", sep=';', encoding='utf-8')
     kkt_list = [((x[1],) + tuple(x)) for x in kkt_list.values.tolist()]
     print "Всего обнаружено принтеров:", len(kkt_list)
@@ -96,8 +96,8 @@ def main():
                               "  IF NOT EXISTS "
                               "    (SELECT 1 FROM RU_T_FISCAL_KKT WHERE factoryId=%s)"
                               "  BEGIN "
-                              "    INSERT INTO RU_T_FISCAL_KKT (address,factoryId,model,regId,status) "
-                              "    VALUES (%s, %s, %s, %s, %s)"
+                              "    INSERT INTO RU_T_FISCAL_KKT (address,factoryId,kpp,model,regId,status) "
+                              "    VALUES (%s, %s, %s, %s, %s, %s)"
                               "  END "
                               "END", kkt_list)
 
@@ -107,8 +107,3 @@ def main():
 if __name__ == "__main__":
     main()
 
-
-
-
-        #requests.get('https://api.sbis.ru/ofd/v1/orgs/7825335145/kkts/0000182040024937/storages/8710000100086130/'
-                     #'docs?dateFrom=2017-05-01T00:00:00&limit=5', cookies=cooks)

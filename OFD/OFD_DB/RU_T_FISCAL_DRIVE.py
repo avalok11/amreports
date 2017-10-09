@@ -7,6 +7,7 @@ import pandas as pd
 import datetime
 import pymssql
 import validation as vl
+import ast
 
 
 def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
@@ -24,7 +25,8 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
                                               'login': login,
                                               'password': pwd}),
                              headers={'content-type': 'application/json; charset=utf-8'})
-    return response, response.cookies
+    cooks = dict(sid=ast.literal_eval(response.content)['sid'])
+    return response, cooks
 
 
 def list_fn(cooks, regid, inn='7825335145', status=2):
@@ -87,7 +89,7 @@ def main():
         regid = (('0000083853048447',), ('0000084015044351',))
     for k in regid:
         dat = pd.DataFrame(list_fn(cooks, k[0], inn='7825335145', status=2))
-        print dat
+        # print dat
         if 'effectiveTo' not in dat.columns.values:
             dat['effectiveTo'] = None
         if 'effectiveFrom' not in dat.columns.values:
