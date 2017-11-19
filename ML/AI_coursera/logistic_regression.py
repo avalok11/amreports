@@ -123,10 +123,19 @@ def propagate(w, b, X, Y):
     """
 
     m = X.shape[1]
+    #print('AMount of train sets: ', m)
+    #print('Shape of X train: ', X.shape)
 
     # FORWARD PROPAGATION (FROM X TO COST)
     ### START CODE HERE ### (≈ 2 lines of code)
     A = sigmoid(np.dot(w.T, X) + b)  # compute activation
+    #print(A)
+    #print(A.shape)
+    #print(Y)
+    #print(Y.shape)
+    #print (Y)
+    #print((Y * np.log(A) + (1 - Y) * np.log(1 - A)))
+    #print(np.sum(Y * np.log(A) + (1 - Y) * np.log(1 - A)))
     cost = -1 / m * np.sum(Y * np.log(A) + (1 - Y) * np.log(1 - A))  # compute cost
     ### END CODE HERE ###
 
@@ -238,7 +247,6 @@ def predict(w, b, X):
         else:
             Y_prediction[0, i] = 0
             ### END CODE HERE ###
-    print(Y_prediction)
 
     assert (Y_prediction.shape == (1, m))
 
@@ -282,6 +290,8 @@ def model(X_train, Y_train, X_test, Y_test, num_iterations=2000, learning_rate=0
 
     # Print train/test Errors
     print("train accuracy: {} %".format(100 - np.mean(np.abs(Y_prediction_train - Y_train)) * 100))
+    #print(Y_prediction_test.shape)
+    #print(Y_test.shape)
     print("test accuracy: {} %".format(100 - np.mean(np.abs(Y_prediction_test - Y_test)) * 100))
 
     d = {"costs": costs,
