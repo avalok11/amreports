@@ -1,0 +1,47 @@
+#!/usr/local/bin/python3
+# -*- coding: utf-8 -*-
+
+import codecs
+import re
+
+
+def main():
+    print('Hi')
+    f = codecs.open(r"C:\Users\aleksey.yarkov\OneDrive - AmRest\DataFlow\playoff\1.txt", 'r', "utf_8_sig")
+    text = f.read()  # или читайте по строке
+    f.close()
+    #print(text)
+    #print(len(text))
+    messages = re.findall(":\d\d]", text)
+    strings = re.findall("\n", text)
+    photo = re.findall(r"\[ Photo \]", text)
+    p = re.compile(r"\w+\s?\w+(?=[,][\s][\[][\d][\d])", re.S | re.I)
+    author = p.findall(text)
+    print('Всего сообщений: ', len(messages))
+    print('Всего отправленных фото: ', len(photo))
+    print('Всего строк: ', len(strings))
+    print('Всего букв: ', len(text))
+
+    #print(author)
+    #print(messages)
+
+    lis = set(author)
+    dic = dict()
+    for l in lis:
+        dic[l] = author.count(l)
+
+    dic2 = sorted(dic.items(), key=lambda x: x[1], reverse=True)
+    #print(dic2)
+
+    print("\nСписок рекордсменам по сообщениям")
+    for k, v in dic2:
+        print(k, v)
+
+
+    #print(lis)
+
+
+
+
+if __name__ == "__main__":
+    main()
