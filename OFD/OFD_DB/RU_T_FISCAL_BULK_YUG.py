@@ -6,7 +6,7 @@ import json
 import pandas as pd
 import datetime
 import pymssql
-import validation as vl
+import validation_yug as vl
 import sys
 from multiprocessing.pool import ThreadPool
 import ast
@@ -37,7 +37,7 @@ def connect(idd=vl.ofd_idd, login=vl.ofd_name, pwd=vl.ofd_pwd):
     return response, cooks
 
 
-def list_checks(cooks, reg_id, storage_id, date_from, date_to, inn='7825335145'):
+def list_checks(cooks, reg_id, storage_id, date_from, date_to, inn='7801330821'):
     """
 
     :param date_to: дата до которой делать забор документо - Обязательный
