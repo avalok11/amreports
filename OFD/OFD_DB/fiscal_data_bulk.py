@@ -13,13 +13,14 @@ def main():
     day = datetime.datetime.today().date().isoformat()
     hour = datetime.datetime.today().hour
     minute = datetime.datetime.today().minute
-    filename = "logs\\message_"+day+"_"+str(hour)+"_"+str(minute)+".log"
+    filename = "message_"+day+"_"+str(hour)+"_"+str(minute)+".log"
     log_file = open(filename, "w")
     #sys.stdout = log_file
     print ("Start logs.")
     #b.main(db_read=True, reg_id='0000083853048447', storage_id='8710000100099930', date_from='2017-06-11T00:00:00', hour_frame=12, 0000777443053319 8710000100844751
     #       date_to='2017-06-19T00:00:00') 0000734403026836 8710000100978624 date_from='2017-07-18T00:31:00', date_to='2017-07-18T16:39:00',
-    b.main(db_read_write=True, date_from='2017-10-01T00:00:00', date_to='2017-10-02T00:00:00', reg_id='0000747535020924', storage_id='8710000100763651') #, reg_id='0000735637027672', storage_id='8710000100977468')  #, reg_id='0000996815032543', storage_id='8710000100977628')0000996815032543 8710000100977628
+    b.main(db_read_write=True, date_from='2018-02-10T00:00:00', date_to='2018-02-11T00:00:00',
+           reg_id='0000611891052444', storage_id='8710000100774551') #, reg_id='0000735637027672', storage_id='8710000100977468')  #, reg_id='0000996815032543', storage_id='8710000100977628')0000996815032543 8710000100977628
     #, reg_id='0000735637027672', storage_id='8710000100977468') 0000996815032543 8710000100977628
     #, reg_id='0001104870020004', storage_id='8710000100840306') 0000735637027672 8710000100977468
     # 0000389406002284 8710000100495878
@@ -29,8 +30,6 @@ def main():
     #0000570631019466 8710000100512301
     #0000570300003541 8710000100512052
     #0000192250002480 8710000100082802
-
-
 
     print ("Finished logs.")
     today2 = datetime.datetime.today()

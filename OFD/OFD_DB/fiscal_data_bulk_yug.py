@@ -13,21 +13,21 @@ def main():
     day = datetime.datetime.today().date().isoformat()
     hour = datetime.datetime.today().hour
     minute = datetime.datetime.today().minute
-    filename = "logs\\message_"+day+"_"+str(hour)+"_"+str(minute)+".log"
-    log_file = open(filename, "w")
+    filename = "message_"+day+"_"+str(hour)+"_"+str(minute)+".log"
+    #log_file = open(filename, "w")
     #sys.stdout = log_file
     print ("Start logs.")
 
-    b.main(db_read_write=True, date_from='2017-10-01T00:00:00', date_to='2017-10-02T00:00:00')
-    #, reg_id='0000747535020924', storage_id='8710000100763651') #, reg_id='0000735637027672', storage_id='8710000100977468')  #, reg_id='0000996815032543', storage_id='8710000100977628')0000996815032543 8710000100977628
+    b.main(db_read_write=True, date_from='2018-01-23T00:00:00', #date_to='2018-10-02T00:00:00')
+    reg_id='0001393456022604', storage_id='8710000101454652') #, reg_id='0000735637027672', storage_id='8710000100977468')  #, reg_id='0000996815032543', storage_id='8710000100977628')0000996815032543 8710000100977628
 
 
     print ("Finished logs.")
     today2 = datetime.datetime.today()
     date2 = today2.isoformat()
     print ("downloading finished: ", date1, " .. ", date2)
-    sys.stdout = old_stdout
-    log_file.close()
+    #sys.stdout = old_stdout
+    #log_file.close()
 
 
 if __name__ == "__main__":

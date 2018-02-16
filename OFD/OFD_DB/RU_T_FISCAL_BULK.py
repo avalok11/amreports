@@ -172,16 +172,18 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                 date_s = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S')
             except ValueError:
                 date_s = datetime.datetime.strptime(date_from, '%Y-%m-%dT%H:%M:%S.%f')
+            except TypeError:
+                date_s = date_from
             try:
                 date_e = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S')
             except ValueError:
                 date_e = datetime.datetime.strptime(date_to, '%Y-%m-%dT%H:%M:%S.%f')
             if (date_e-date_s).days > 7:
                 date_to_x = datetime.datetime.strftime(date_s + datetime.timedelta(days=7), '%Y-%m-%dT%H:%M:%S')
-                print " собираю данные из диапазона", date_from, " до ", date_to_x
+                print " собираю данные из диапазона1", date_from, " до ", date_to_x
             else:
                 date_to_x = date_to
-                print " собираю данные из диапазона", date_from, " до ", date_to
+                print " собираю данные из диапазона2", date_from, " до ", date_to
             data_t = list_checks(cooks, printer[0], printer[1], date_from, date_to_x)  #запрос в ОФД!
             try:
                 data_t = pd.DataFrame(data_t)
@@ -200,16 +202,22 @@ def get_data_from_ofd(id_fn_time, date_is_fixed, date_to, today_x):
                 date = datetime.datetime.utcfromtimestamp(rec['dateTime'])
                 if date < today_x:
                     data_check = 0
-                    print "  собраны данные ", date_from, " по ", date
+                    print "  ==собраны данные== ", date_from, " по ", date
                     date_from = (date + datetime.timedelta(minutes=1)).isoformat()
                 else:
                     print "Достигли финальной даты."
+                    data_check = 1
             except IndexError:
-                data_check = 1
-                print "Больше нет данных."
+                #data_check = 1
+                print "Данных в диапазоне нет."
+                date_from = date_to_x
             except KeyError:
-                data_check = 1
+                #data_check = 1
                 print "Больше нет данных."
+                date_from = date_to_x
+            if date_from == date_to:
+                print "Достигли финальной даты."
+                data_check = 1
             length += len(data_t)
             data = pd.concat([data, data_t]) #- приводит к экспотенциальному увеличения массива данных
             # data = data_t
